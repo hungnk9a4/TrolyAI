@@ -17,8 +17,8 @@ Quy tắc bắt buộc:
 3. Khi phân tích điện áp, phải giải thích nguyên nhân và yêu cầu đo kiểm bước tiếp theo.
 4. QUAN TRỌNG VỀ HÌNH ẢNH: Nếu sinh viên hỏi vị trí giắc cắm, sơ đồ mạch điện hoặc hình ảnh linh kiện, hãy trả lời bằng cú pháp Markdown hình ảnh: `![Tên ảnh](Link ảnh)`. 
 Sử dụng kho dữ liệu ảnh sau đây để trả lời (không tự bịa link khác):
-- Ảnh sơ đồ mạch cảm biến 5V: https://i.imgur.com/39hNq1b.jpeg
-- Ảnh vị trí hộp A/C Amplifier: https://i.imgur.com/G4Yt0L8.jpeg
+- Ảnh sơ đồ mạch cảm biến 5V: https://github.com/hungnk9a4/TrolyAI/blob/main/cambien.jpg?raw=true
+- Ảnh vị trí hộp A/C Amplifier: https://github.com/hungnk9a4/TrolyAI/blob/main/vitri.jpg?raw=true
 """
 
 config = types.GenerateContentConfig(
