@@ -46,7 +46,7 @@ def main(page: ft.Page):
         msg_margin = ft.margin.Margin(left=50, top=0, right=0, bottom=0) if is_user else ft.margin.Margin(left=0, top=0, right=50, bottom=0)
         
         # Nếu là người dùng gửi, hiển thị dạng Text. Nếu AI gửi, hiển thị dạng Markdown để load được ảnh
-        content_control = ft.Text(text, color=ft.Colors.WHITE, size=15) if is_user else ft.Markdown(text, selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_WEB_FLAVOR)
+        content_control = ft.Text(text, color=ft.Colors.WHITE, size=15) if is_user else ft.Markdown(text, selectable=True)
         
         msg_container = ft.Container(
             content=content_control,
@@ -75,7 +75,7 @@ def main(page: ft.Page):
             chat_view.controls.remove(loading_text)
             
             # Sử dụng Markdown cho luồng chữ chạy ra
-            ai_text_control = ft.Markdown("", selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_WEB_FLAVOR)
+            ai_text_control = ft.Markdown("", selectable=True)
             ai_msg_container = ft.Container(
                 content=ai_text_control,
                 bgcolor=ft.Colors.BLUE_GREY_50,
