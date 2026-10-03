@@ -34,8 +34,7 @@ def main(page: ft.Page):
     page.padding = 20
 
     chat_session = client.chats.create(
-        # Đổi về 1.5-flash để có 1500 lượt miễn phí/ngày
-        model="gemini-1.5-flash",
+        model="gemini-3.8-flash",
         config=config
     )
 
