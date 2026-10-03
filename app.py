@@ -6,15 +6,19 @@ import os
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
+# ĐƯA SẴN TÀI LIỆU HÌNH ẢNH VÀO CHO AI TẠI ĐÂY
 system_instruction = """
 Bạn là một Chuyên gia chẩn đoán kỹ thuật ô tô cấp cao, chuyên sâu về mạch điện và hệ thống điều hòa (A/C) trên Toyota Vios 2019-2020.
-Nhiệm vụ của bạn là hướng dẫn sinh viên đo kiểm, chẩn đoán lỗi mạch cảm biến áp suất ga (nguồn 5V, mass, tín hiệu) bằng đồng hồ VOM.
+Nhiệm vụ của bạn là hướng dẫn sinh viên đo kiểm, chẩn đoán lỗi mạch cảm biến áp suất ga (nguồn 5V, mass, tín hiệu).
 
 Quy tắc bắt buộc:
 1. LUÔN LUÔN giao tiếp từng bước. Không bao giờ đưa ra toàn bộ quy trình đo kiểm trong 1 tin nhắn.
-2. Bắt đầu bằng việc yêu cầu người dùng miêu tả tình trạng xe hoặc đưa ra một thông số đo kiểm ban đầu.
-3. Khi người dùng nhập thông số Volt, hãy phân tích logic (vd: dưới 4.5V là sụt áp, 1-3.5V là ga tiêu chuẩn, v.v.), giải thích nguyên nhân có thể xảy ra và yêu cầu họ làm bước đo kiểm tiếp theo.
-4. Sử dụng đúng thuật ngữ kỹ thuật (Hộp A/C Amplifier, mạch VC, tín hiệu PR, v.v.).
+2. Bắt đầu bằng việc yêu cầu người dùng miêu tả tình trạng xe.
+3. Khi phân tích điện áp, phải giải thích nguyên nhân và yêu cầu đo kiểm bước tiếp theo.
+4. QUAN TRỌNG VỀ HÌNH ẢNH: Nếu sinh viên hỏi vị trí giắc cắm, sơ đồ mạch điện hoặc hình ảnh linh kiện, hãy trả lời bằng cú pháp Markdown hình ảnh: `![Tên ảnh](Link ảnh)`. 
+Sử dụng kho dữ liệu ảnh sau đây để trả lời (không tự bịa link khác):
+- Ảnh sơ đồ mạch cảm biến 5V: https://i.imgur.com/39hNq1b.jpeg
+- Ảnh vị trí hộp A/C Amplifier: https://i.imgur.com/G4Yt0L8.jpeg
 """
 
 config = types.GenerateContentConfig(
@@ -30,7 +34,8 @@ def main(page: ft.Page):
     page.padding = 20
 
     chat_session = client.chats.create(
-        model="gemini-3.5-flash",
+        # Đổi về 1.5-flash để có 1500 lượt miễn phí/ngày
+        model="gemini-1.5-flash",
         config=config
     )
 
@@ -40,8 +45,11 @@ def main(page: ft.Page):
         is_user = sender == "Bạn"
         msg_margin = ft.margin.Margin(left=50, top=0, right=0, bottom=0) if is_user else ft.margin.Margin(left=0, top=0, right=50, bottom=0)
         
+        # Nếu là người dùng gửi, hiển thị dạng Text. Nếu AI gửi, hiển thị dạng Markdown để load được ảnh
+        content_control = ft.Text(text, color=ft.Colors.WHITE, size=15) if is_user else ft.Markdown(text, selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_WEB_FLAVOR)
+        
         msg_container = ft.Container(
-            content=ft.Text(text, color=ft.Colors.WHITE if is_user else ft.Colors.BLACK, size=15),
+            content=content_control,
             bgcolor=ft.Colors.BLUE if is_user else ft.Colors.BLUE_GREY_50,
             padding=15,
             border_radius=10,
@@ -58,20 +66,16 @@ def main(page: ft.Page):
         add_message("Bạn", user_text)
         txt_input.value = "" 
         
-        # Hiển thị trạng thái phân tích ngắn gọn
         loading_text = ft.Text("AI đang phân tích...", italic=True, color=ft.Colors.GREY)
         chat_view.controls.append(loading_text)
         page.update()
 
         try:
-            # 1. Gọi API dạng luồng (Streaming) thay vì chờ nguyên cục
             response_stream = chat_session.send_message_stream(user_text)
-            
-            # 2. Xóa trạng thái loading ngay khi API phản hồi nhịp đầu tiên
             chat_view.controls.remove(loading_text)
             
-            # 3. Tạo sẵn một khung tin nhắn rỗng cho AI trên màn hình
-            ai_text_control = ft.Text("", color=ft.Colors.BLACK, size=15)
+            # Sử dụng Markdown cho luồng chữ chạy ra
+            ai_text_control = ft.Markdown("", selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_WEB_FLAVOR)
             ai_msg_container = ft.Container(
                 content=ai_text_control,
                 bgcolor=ft.Colors.BLUE_GREY_50,
@@ -82,7 +86,6 @@ def main(page: ft.Page):
             chat_view.controls.append(ai_msg_container)
             page.update()
 
-            # 4. Đổ chữ từ từ vào khung tin nhắn tạo hiệu ứng gõ chữ (Real-time)
             for chunk in response_stream:
                 ai_text_control.value += chunk.text
                 page.update()
@@ -94,7 +97,7 @@ def main(page: ft.Page):
             page.update()
 
     txt_input = ft.TextField(
-        hint_text="Nhập thông số điện áp hoặc hiện tượng...",
+        hint_text="Nhập thông số hoặc yêu cầu sơ đồ...",
         expand=True,
         on_submit=on_send_click
     )
@@ -113,9 +116,9 @@ def main(page: ft.Page):
     )
 
     try:
-        response = chat_session.send_message("Hãy gửi lời chào và yêu cầu tôi cung cấp thông số đo kiểm ban đầu tại cảm biến áp suất ga.")
+        response = chat_session.send_message("Hãy gửi lời chào.")
         add_message("AI", response.text)
-    except Exception as ex:
+    except Exception:
         add_message("AI", "Xin chào! Vui lòng làm mới trang web.")
 
 port = int(os.environ.get("PORT", 8080))
