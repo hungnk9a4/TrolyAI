@@ -100,4 +100,4 @@ def main(page: ft.Page):
 
 # CẤU HÌNH ĐỂ CHẠY TRÊN ĐÁM MÂY (WEB)
 port = int(os.environ.get("PORT", 8080))
-ft.run(main, view=ft.WEB_BROWSER, host="0.0.0.0", port=port)
+ft.run(main, view=ft.AppView.WEB_BROWSER, host="0.0.0.0", port=port)
