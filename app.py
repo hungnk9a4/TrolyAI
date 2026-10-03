@@ -3,7 +3,6 @@ from google import genai
 from google.genai import types
 import os
 
-# Lấy API Key từ Biến môi trường của máy chủ (Tuyệt đối bảo mật)
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
@@ -59,17 +58,38 @@ def main(page: ft.Page):
         add_message("Bạn", user_text)
         txt_input.value = "" 
         
-        loading_text = ft.Text("AI đang phân tích mạch điện...", italic=True, color=ft.Colors.GREY)
+        # Hiển thị trạng thái phân tích ngắn gọn
+        loading_text = ft.Text("AI đang phân tích...", italic=True, color=ft.Colors.GREY)
         chat_view.controls.append(loading_text)
         page.update()
 
         try:
-            response = chat_session.send_message(user_text)
+            # 1. Gọi API dạng luồng (Streaming) thay vì chờ nguyên cục
+            response_stream = chat_session.send_message_stream(user_text)
+            
+            # 2. Xóa trạng thái loading ngay khi API phản hồi nhịp đầu tiên
             chat_view.controls.remove(loading_text)
-            add_message("AI", response.text)
+            
+            # 3. Tạo sẵn một khung tin nhắn rỗng cho AI trên màn hình
+            ai_text_control = ft.Text("", color=ft.Colors.BLACK, size=15)
+            ai_msg_container = ft.Container(
+                content=ai_text_control,
+                bgcolor=ft.Colors.BLUE_GREY_50,
+                padding=15,
+                border_radius=10,
+                margin=ft.margin.Margin(left=0, top=0, right=50, bottom=0)
+            )
+            chat_view.controls.append(ai_msg_container)
+            page.update()
+
+            # 4. Đổ chữ từ từ vào khung tin nhắn tạo hiệu ứng gõ chữ (Real-time)
+            for chunk in response_stream:
+                ai_text_control.value += chunk.text
+                page.update()
         
         except Exception as ex:
-            chat_view.controls.remove(loading_text)
+            if loading_text in chat_view.controls:
+                chat_view.controls.remove(loading_text)
             add_message("Hệ thống", f"Lỗi kết nối API: {ex}")
             page.update()
 
@@ -98,6 +118,5 @@ def main(page: ft.Page):
     except Exception as ex:
         add_message("AI", "Xin chào! Vui lòng làm mới trang web.")
 
-# CẤU HÌNH ĐỂ CHẠY TRÊN ĐÁM MÂY (WEB)
 port = int(os.environ.get("PORT", 8080))
 ft.run(main, view=ft.AppView.WEB_BROWSER, host="0.0.0.0", port=port)
