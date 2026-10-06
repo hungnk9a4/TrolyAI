@@ -7,7 +7,6 @@ api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
 # 1. TẢI TÀI LIỆU LÊN GEMINI TỪ THƯ MỤC LƯU TRỮ
-# Đặt ngoài hàm main() để máy chủ chỉ nạp tài liệu 1 lần duy nhất khi khởi động, giúp tốc độ phản hồi cực nhanh
 doc_dir = "tai_lieu"
 uploaded_pdf_parts = []
 
@@ -16,7 +15,6 @@ if os.path.exists(doc_dir):
         if filename.lower().endswith(".pdf"):
             file_path = os.path.join(doc_dir, filename)
             try:
-                # Tự động đẩy file PDF cho Gemini API xử lý
                 g_file = client.files.upload(file=file_path)
                 uploaded_pdf_parts.append(g_file)
             except Exception as e:
@@ -25,7 +23,7 @@ if os.path.exists(doc_dir):
 # 2. HƯỚNG DẪN ĐỊNH HƯỚNG SUY LUẬN CHO AI
 system_instruction = """
 Bạn là một Chuyên gia chẩn đoán kỹ thuật ô tô cấp cao.
-Nhiệm vụ của bạn là hướng dẫn sinh viên đo kiểm, chẩn đoán lỗi hệ thống điều hòa (A/C) dựa trên bộ Cẩm nang sửa chữa được cung cấp trong bối cảnh.
+Nhiệm vụ của bạn là hướng dẫn sinh viên đo kiểm, chẩn đoán lỗi hệ thống điều hòa (A/C) dựa trên bộ Cẩm nang sửa chữa được cung cấp.
 
 Quy tắc bắt buộc:
 1. LUÔN LUÔN giao tiếp từng bước. Không đưa ra toàn bộ quy trình đo kiểm trong 1 tin nhắn.
@@ -37,7 +35,7 @@ Quy tắc bắt buộc:
 
 config = types.GenerateContentConfig(
     system_instruction=system_instruction,
-    temperature=0.2 # Độ sáng tạo thấp = Độ chính xác kỹ thuật cao
+    temperature=0.2 
 )
 
 def main(page: ft.Page):
@@ -47,23 +45,9 @@ def main(page: ft.Page):
     page.window_height = 750
     page.padding = 20
 
-    # 3. NHÚNG TÀI LIỆU VÀO PHIÊN CHAT CỦA TỪNG SINH VIÊN
-    session_history = []
-    if uploaded_pdf_parts:
-        session_history = [
-            types.Content(
-                role="user",
-                parts=["Dưới đây là các tài liệu Cẩm nang sửa chữa hệ thống điều hòa của các dòng xe. Hãy đọc kỹ, ghi nhớ cấu tạo, thông số, sơ đồ mạch điện để hướng dẫn tôi sửa chữa."] + uploaded_pdf_parts
-            ),
-            types.Content(
-                role="model",
-                parts=["Tôi đã đọc, hiểu và ghi nhớ toàn bộ thông số trong các tài liệu Cẩm nang sửa chữa này. Tôi đã sẵn sàng hướng dẫn bạn chẩn đoán lỗi dựa trên tài liệu."]
-            )
-        ]
-
+    # Khởi tạo phiên chat trống (Tránh lỗi Validation Error)
     chat_session = client.chats.create(
         model="gemini-3.8-flash",
-        history=session_history if session_history else None,
         config=config
     )
 
@@ -141,11 +125,17 @@ def main(page: ft.Page):
         input_row
     )
 
+    # GỬI TIN NHẮN CHÀO HỎI KÈM THEO FILE PDF ĐỂ AI ĐỌC
     try:
-        response = chat_session.send_message("Hãy gửi lời chào và yêu cầu tôi cung cấp tình trạng xe kèm theo TÊN DÒNG XE cụ thể để bắt đầu tra cứu tài liệu.")
+        if uploaded_pdf_parts:
+            # Gộp câu lệnh mồi và danh sách file PDF vào cùng 1 tin nhắn
+            initial_prompt = ["Hãy đọc kỹ các Cẩm nang sửa chữa sau. Gửi một lời chào ngắn gọn và yêu cầu tôi cung cấp tình trạng xe kèm DÒNG XE để tra cứu."] + uploaded_pdf_parts
+            response = chat_session.send_message(initial_prompt)
+        else:
+            response = chat_session.send_message("Hãy gửi lời chào và yêu cầu tôi cung cấp tình trạng xe kèm DÒNG XE cụ thể để bắt đầu.")
         add_message("AI", response.text)
-    except Exception:
-        add_message("AI", "Xin chào! Vui lòng làm mới trang web.")
+    except Exception as ex:
+        add_message("AI", f"Xin chào! Vui lòng làm mới trang web. Lỗi: {ex}")
 
 port = int(os.environ.get("PORT", 8080))
 ft.run(main, view=ft.AppView.WEB_BROWSER, host="0.0.0.0", port=port)
