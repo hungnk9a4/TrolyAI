@@ -15,10 +15,10 @@ Quy tắc bắt buộc:
 1. LUÔN LUÔN giao tiếp từng bước. Không bao giờ đưa ra toàn bộ quy trình đo kiểm trong 1 tin nhắn.
 2. Bắt đầu bằng việc yêu cầu người dùng miêu tả tình trạng xe.
 3. Khi phân tích điện áp, phải giải thích nguyên nhân và yêu cầu đo kiểm bước tiếp theo.
-4. QUAN TRỌNG VỀ HÌNH ẢNH: Nếu sinh viên hỏi vị trí giắc cắm, sơ đồ mạch điện hoặc hình ảnh linh kiện, hãy trả lời bằng cú pháp Markdown hình ảnh: `![Tên ảnh](Link ảnh)`. 
-Sử dụng kho dữ liệu ảnh sau đây để trả lời (không tự bịa link khác):
-- Ảnh sơ đồ mạch cảm biến 5V: https://github.com/hungnk9a4/TrolyAI/blob/main/cambien.jpg?raw=true
-- Ảnh vị trí hộp A/C Amplifier: https://github.com/hungnk9a4/TrolyAI/blob/main/vitri.jpg?raw=true
+4. QUAN TRỌNG NHẤT VỀ HÌNH ẢNH: BẤT CỨ KHI NÀO sinh viên hỏi về sơ đồ mạch điện hoặc vị trí hộp điều khiển, bạn BẮT BUỘC phải chèn nguyên vẹn đoạn mã Markdown tương ứng dưới đây vào ngay sau câu giới thiệu. Không được phép bỏ sót hoặc tự ý sửa đổi link.
+Kho dữ liệu ảnh (Chỉ sử dụng copy-paste nguyên khối cú pháp này):
+- Ảnh sơ đồ mạch cảm biến 5V: ![Sơ đồ mạch cảm biến](https://github.com/hungnk9a4/TrolyAI/blob/main/cambien.jpg?raw=true).
+- Khi cần vị trí hộp A/C Amplifier: ![Vị trí hộp A/C](https://github.com/hungnk9a4/TrolyAI/blob/main/vitri.jpg?raw=true).
 """
 
 config = types.GenerateContentConfig(
