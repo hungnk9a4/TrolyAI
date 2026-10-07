@@ -42,12 +42,12 @@ def main(page: ft.Page):
     # CẤU HÌNH GIAO DIỆN TỔNG THỂ
     page.title = "Trợ Lý AI Chẩn Đoán Ô Tô"
     page.theme_mode = ft.ThemeMode.LIGHT
-    page.bgcolor = "#F4F6F9" # Màu nền xám nhạt dịu mắt
+    page.bgcolor = "#F4F6F9" 
     page.window_width = 450
     page.window_height = 750
     page.padding = 10
 
-    # THANH TIÊU ĐỀ (APP BAR) HIỆN ĐẠI
+    # THANH TIÊU ĐỀ
     page.appbar = ft.AppBar(
         leading=ft.Icon(ft.Icons.DIRECTIONS_CAR_ROUNDED, color=ft.Colors.WHITE, size=28),
         leading_width=50,
@@ -64,37 +64,28 @@ def main(page: ft.Page):
         config=config
     )
 
-    # KHUNG CHAT
     chat_view = ft.ListView(expand=True, spacing=15, auto_scroll=True, padding=10)
 
-    # HÀM HIỂN THỊ TIN NHẮN VỚI AVATAR
     def add_message(sender: str, text: str):
         is_user = sender == "Bạn"
         
-        # Thiết kế Avatar
         avatar = ft.CircleAvatar(
             content=ft.Icon(ft.Icons.PERSON_ROUNDED if is_user else ft.Icons.SMART_TOY_ROUNDED, color=ft.Colors.WHITE),
             bgcolor=ft.Colors.BLUE_400 if is_user else ft.Colors.ORANGE_400,
             radius=18
         )
         
-        # Thiết kế Bong bóng chat
         content_control = ft.Text(text, color=ft.Colors.WHITE, size=15) if is_user else ft.Markdown(text, selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_WEB)
         
         msg_bubble = ft.Container(
             content=content_control,
             bgcolor=ft.Colors.BLUE_ACCENT_700 if is_user else ft.Colors.WHITE,
-            padding=ft.padding.all(12),
-            border_radius=ft.border_radius.only(
-                top_left=15, top_right=15,
-                bottom_left=15 if is_user else 5,
-                bottom_right=5 if is_user else 15
-            ),
+            padding=12,         # <--- Đã sửa lỗi: Chỉ dùng số nguyên
+            border_radius=15,   # <--- Đã sửa lỗi: Chỉ dùng số nguyên
             shadow=ft.BoxShadow(spread_radius=1, blur_radius=3, color=ft.Colors.BLACK12, offset=ft.Offset(0, 1)),
-            width=280 # Giới hạn chiều rộng để bong bóng trông đẹp hơn
+            width=280
         )
 
-        # Sắp xếp hàng (Row) tùy theo người gửi
         msg_row = ft.Row(
             controls=[msg_bubble, avatar] if is_user else [avatar, msg_bubble],
             alignment=ft.MainAxisAlignment.END if is_user else ft.MainAxisAlignment.START,
@@ -112,7 +103,6 @@ def main(page: ft.Page):
         add_message("Bạn", user_text)
         txt_input.value = "" 
         
-        # Hiệu ứng đang gõ chữ
         loading_row = ft.Row([
             ft.CircleAvatar(content=ft.Icon(ft.Icons.SMART_TOY_ROUNDED, color=ft.Colors.WHITE), bgcolor=ft.Colors.ORANGE_400, radius=18),
             ft.Text("AI đang lật Cẩm nang sửa chữa...", italic=True, color=ft.Colors.GREY, size=13)
@@ -125,13 +115,12 @@ def main(page: ft.Page):
             response_stream = chat_session.send_message_stream(user_text)
             chat_view.controls.remove(loading_row)
             
-            # Cấu trúc bong bóng chat cho AI khi Streaming
             ai_text_control = ft.Markdown("", selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_WEB)
             ai_msg_bubble = ft.Container(
                 content=ai_text_control,
                 bgcolor=ft.Colors.WHITE,
-                padding=ft.padding.all(12),
-                border_radius=ft.border_radius.only(top_left=15, top_right=15, bottom_left=5, bottom_right=15),
+                padding=12,         # <--- Đã sửa lỗi
+                border_radius=15,   # <--- Đã sửa lỗi
                 shadow=ft.BoxShadow(spread_radius=1, blur_radius=3, color=ft.Colors.BLACK12, offset=ft.Offset(0, 1)),
                 width=280
             )
@@ -152,7 +141,6 @@ def main(page: ft.Page):
             add_message("Hệ thống", f"Lỗi kết nối API: {ex}")
             page.update()
 
-    # KHU VỰC NHẬP LIỆU HIỆN ĐẠI
     txt_input = ft.TextField(
         hint_text="Hỏi thông số, sơ đồ, pan bệnh...",
         expand=True,
@@ -160,7 +148,7 @@ def main(page: ft.Page):
         filled=True,
         fill_color=ft.Colors.WHITE,
         border_color=ft.Colors.TRANSPARENT,
-        content_padding=ft.padding.only(left=20, top=15, bottom=15, right=20),
+        content_padding=15,    # <--- Đã sửa lỗi
         on_submit=on_send_click
     )
     
@@ -179,7 +167,6 @@ def main(page: ft.Page):
 
     page.add(chat_view, input_row)
 
-    # GỬI TIN NHẮN CHÀO HỎI
     try:
         if uploaded_pdf_parts:
             initial_prompt = ["Hãy đọc kỹ các Cẩm nang sửa chữa sau. Gửi một lời chào vui vẻ tới các bạn sinh viên và yêu cầu cung cấp tình trạng xe kèm DÒNG XE để tra cứu."] + uploaded_pdf_parts
