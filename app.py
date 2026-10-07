@@ -49,13 +49,13 @@ def main(page: ft.Page):
 
     # THANH TIÊU ĐỀ
     page.appbar = ft.AppBar(
-        leading=ft.Icon(ft.Icons.DIRECTIONS_CAR_ROUNDED, color=ft.Colors.WHITE, size=28),
+        leading=ft.Icon(ft.Icons.DIRECTIONS_CAR_ROUNDED, color="white", size=28),
         leading_width=50,
-        title=ft.Text("Trợ Lý Chuyên Gia A/C", color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD, size=20),
+        title=ft.Text("Trợ Lý Chuyên Gia A/C", color="white", weight=ft.FontWeight.BOLD, size=20),
         center_title=False,
-        bgcolor=ft.Colors.BLUE_ACCENT_700,
+        bgcolor="blueAccent700",
         actions=[
-            ft.IconButton(ft.Icons.INFO_OUTLINE_ROUNDED, icon_color=ft.Colors.WHITE)
+            ft.IconButton(ft.Icons.INFO_OUTLINE_ROUNDED, icon_color="white")
         ]
     )
 
@@ -70,19 +70,20 @@ def main(page: ft.Page):
         is_user = sender == "Bạn"
         
         avatar = ft.CircleAvatar(
-            content=ft.Icon(ft.Icons.PERSON_ROUNDED if is_user else ft.Icons.SMART_TOY_ROUNDED, color=ft.Colors.WHITE),
-            bgcolor=ft.Colors.BLUE_400 if is_user else ft.Colors.ORANGE_400,
+            content=ft.Icon(ft.Icons.PERSON_ROUNDED if is_user else ft.Icons.SMART_TOY_ROUNDED, color="white"),
+            bgcolor="blue400" if is_user else "orange400",
             radius=18
         )
         
-        content_control = ft.Text(text, color=ft.Colors.WHITE, size=15) if is_user else ft.Markdown(text, selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_WEB)
+        content_control = ft.Text(text, color="white", size=15) if is_user else ft.Markdown(text, selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_WEB)
         
         msg_bubble = ft.Container(
             content=content_control,
-            bgcolor=ft.Colors.BLUE_ACCENT_700 if is_user else ft.Colors.WHITE,
-            padding=12,         # <--- Đã sửa lỗi: Chỉ dùng số nguyên
-            border_radius=15,   # <--- Đã sửa lỗi: Chỉ dùng số nguyên
-            shadow=ft.BoxShadow(spread_radius=1, blur_radius=3, color=ft.Colors.BLACK12, offset=ft.Offset(0, 1)),
+            bgcolor="blueAccent700" if is_user else "white",
+            padding=12,
+            border_radius=15,
+            # Đã thay thế hoàn toàn ft.Colors bằng chuỗi "black12" siêu an toàn
+            shadow=ft.BoxShadow(spread_radius=1, blur_radius=3, color="black12", offset=ft.Offset(0, 1)),
             width=280
         )
 
@@ -104,8 +105,8 @@ def main(page: ft.Page):
         txt_input.value = "" 
         
         loading_row = ft.Row([
-            ft.CircleAvatar(content=ft.Icon(ft.Icons.SMART_TOY_ROUNDED, color=ft.Colors.WHITE), bgcolor=ft.Colors.ORANGE_400, radius=18),
-            ft.Text("AI đang lật Cẩm nang sửa chữa...", italic=True, color=ft.Colors.GREY, size=13)
+            ft.CircleAvatar(content=ft.Icon(ft.Icons.SMART_TOY_ROUNDED, color="white"), bgcolor="orange400", radius=18),
+            ft.Text("AI đang lật Cẩm nang sửa chữa...", italic=True, color="grey", size=13)
         ], alignment=ft.MainAxisAlignment.START)
         
         chat_view.controls.append(loading_row)
@@ -118,14 +119,15 @@ def main(page: ft.Page):
             ai_text_control = ft.Markdown("", selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_WEB)
             ai_msg_bubble = ft.Container(
                 content=ai_text_control,
-                bgcolor=ft.Colors.WHITE,
-                padding=12,         # <--- Đã sửa lỗi
-                border_radius=15,   # <--- Đã sửa lỗi
-                shadow=ft.BoxShadow(spread_radius=1, blur_radius=3, color=ft.Colors.BLACK12, offset=ft.Offset(0, 1)),
+                bgcolor="white",
+                padding=12,
+                border_radius=15,
+                # Đã thay thế hoàn toàn ft.Colors bằng chuỗi "black12" siêu an toàn
+                shadow=ft.BoxShadow(spread_radius=1, blur_radius=3, color="black12", offset=ft.Offset(0, 1)),
                 width=280
             )
             
-            ai_avatar = ft.CircleAvatar(content=ft.Icon(ft.Icons.SMART_TOY_ROUNDED, color=ft.Colors.WHITE), bgcolor=ft.Colors.ORANGE_400, radius=18)
+            ai_avatar = ft.CircleAvatar(content=ft.Icon(ft.Icons.SMART_TOY_ROUNDED, color="white"), bgcolor="orange400", radius=18)
             ai_msg_row = ft.Row([ai_avatar, ai_msg_bubble], alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.END)
             
             chat_view.controls.append(ai_msg_row)
@@ -146,15 +148,15 @@ def main(page: ft.Page):
         expand=True,
         border_radius=25,
         filled=True,
-        fill_color=ft.Colors.WHITE,
-        border_color=ft.Colors.TRANSPARENT,
-        content_padding=15,    # <--- Đã sửa lỗi
+        fill_color="white",
+        border_color="transparent",
+        content_padding=15,
         on_submit=on_send_click
     )
     
     btn_send = ft.FloatingActionButton(
         icon=ft.Icons.SEND_ROUNDED,
-        bgcolor=ft.Colors.BLUE_ACCENT_700,
+        bgcolor="blueAccent700",
         mini=True,
         on_click=on_send_click
     )
