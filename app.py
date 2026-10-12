@@ -1,183 +1,155 @@
 import flet as ft
-from google import genai
-from google.genai import types
 import os
 
-api_key = os.environ.get("GEMINI_API_KEY")
-client = genai.Client(api_key=api_key)
-
-# 1. TẢI TÀI LIỆU LÊN GEMINI
-doc_dir = "tai_lieu"
-uploaded_pdf_parts = []
-
-if os.path.exists(doc_dir):
-    for filename in os.listdir(doc_dir):
-        if filename.lower().endswith(".pdf"):
-            file_path = os.path.join(doc_dir, filename)
-            try:
-                g_file = client.files.upload(file=file_path)
-                uploaded_pdf_parts.append(g_file)
-            except Exception as e:
-                print(f"Lỗi tải file {filename}: {e}")
-
-# 2. HƯỚNG DẪN ĐỊNH HƯỚNG SUY LUẬN
-system_instruction = """
-Bạn là một Chuyên gia chẩn đoán kỹ thuật ô tô cấp cao, vui tính và thân thiện với sinh viên.
-Nhiệm vụ của bạn là hướng dẫn sinh viên đo kiểm, chẩn đoán lỗi hệ thống điều hòa (A/C) dựa trên bộ Cẩm nang sửa chữa.
-
-Quy tắc bắt buộc:
-1. LUÔN LUÔN giao tiếp từng bước. Không đưa ra toàn bộ quy trình đo kiểm trong 1 tin nhắn.
-2. Nếu sinh viên hỏi về một dòng xe cụ thể, hãy TÌM TÀI LIỆU của dòng xe đó để trả lời. 
-3. Nếu dòng xe sinh viên hỏi KHÔNG CÓ trong tài liệu, hãy báo rõ là "Thầy/Cô chưa cập nhật tài liệu xe này vào hệ thống".
-4. Trích dẫn số liệu CHÍNH XÁC Y HỆT từ Cẩm nang sửa chữa.
-5. QUAN TRỌNG VỀ HÌNH ẢNH: BẮT BUỘC chèn đoạn mã Markdown chứa link ảnh khi được hỏi về sơ đồ.
-"""
-
-config = types.GenerateContentConfig(
-    system_instruction=system_instruction,
-    temperature=0.2 
-)
-
 def main(page: ft.Page):
-    # CẤU HÌNH GIAO DIỆN TỔNG THỂ
-    page.title = "Trợ Lý AI Chẩn Đoán Ô Tô"
+    # CẤU HÌNH TRANG TOÀN MÀN HÌNH
+    page.title = "Nền tảng Tra cứu Kỹ thuật Ô tô - GDS Auto Edu"
+    page.padding = 0  # Tràn viền
     page.theme_mode = ft.ThemeMode.LIGHT
-    page.bgcolor = "#F4F6F9" 
-    page.window_width = 450
-    page.window_height = 750
-    page.padding = 10
+    page.window_width = 1200
+    page.window_height = 800
 
-    # THANH TIÊU ĐỀ
-    page.appbar = ft.AppBar(
-        leading=ft.Icon(ft.Icons.DIRECTIONS_CAR_ROUNDED, color="white", size=28),
-        leading_width=50,
-        title=ft.Text("Trợ Lý Chuyên Gia A/C", color="white", weight=ft.FontWeight.BOLD, size=20),
-        center_title=False,
-        bgcolor="blueAccent700",
-        actions=[
-            ft.IconButton(ft.Icons.INFO_OUTLINE_ROUNDED, icon_color="white")
-        ]
-    )
-
-    chat_session = client.chats.create(
-        model="gemini-3.8-flash",
-        config=config
-    )
-
-    chat_view = ft.ListView(expand=True, spacing=15, auto_scroll=True, padding=10)
-
-    def add_message(sender: str, text: str):
-        is_user = sender == "Bạn"
-        
-        avatar = ft.CircleAvatar(
-            content=ft.Icon(ft.Icons.PERSON_ROUNDED if is_user else ft.Icons.SMART_TOY_ROUNDED, color="white"),
-            bgcolor="blue400" if is_user else "orange400",
-            radius=18
-        )
-        
-        content_control = ft.Text(text, color="white", size=15) if is_user else ft.Markdown(text, selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_WEB)
-        
-        msg_bubble = ft.Container(
-            content=content_control,
-            bgcolor="blueAccent700" if is_user else "white",
-            padding=12,
-            border_radius=15,
-            # Đã thay thế hoàn toàn ft.Colors bằng chuỗi "black12" siêu an toàn
-            shadow=ft.BoxShadow(spread_radius=1, blur_radius=3, color="black12", offset=ft.Offset(0, 1)),
-            width=280
-        )
-
-        msg_row = ft.Row(
-            controls=[msg_bubble, avatar] if is_user else [avatar, msg_bubble],
-            alignment=ft.MainAxisAlignment.END if is_user else ft.MainAxisAlignment.START,
-            vertical_alignment=ft.CrossAxisAlignment.END
-        )
-        
-        chat_view.controls.append(msg_row)
-        page.update()
-
-    def on_send_click(e):
-        if not txt_input.value:
-            return
-        
-        user_text = txt_input.value
-        add_message("Bạn", user_text)
-        txt_input.value = "" 
-        
-        loading_row = ft.Row([
-            ft.CircleAvatar(content=ft.Icon(ft.Icons.SMART_TOY_ROUNDED, color="white"), bgcolor="orange400", radius=18),
-            ft.Text("AI đang lật Cẩm nang sửa chữa...", italic=True, color="grey", size=13)
-        ], alignment=ft.MainAxisAlignment.START)
-        
-        chat_view.controls.append(loading_row)
-        page.update()
-
-        try:
-            response_stream = chat_session.send_message_stream(user_text)
-            chat_view.controls.remove(loading_row)
+    # ---------------------------------------------------
+    # 1. CỬA SỔ AI CHAT (NỔI LƠ LỬNG)
+    # ---------------------------------------------------
+    chat_window = ft.Container(
+        visible=False, # Mặc định ẩn, chỉ hiện khi bấm nút
+        width=380,
+        height=550,
+        bgcolor="white",
+        border_radius=15,
+        shadow=ft.BoxShadow(spread_radius=1, blur_radius=15, color="black26", offset=ft.Offset(0, 5)),
+        right=20,
+        bottom=80,  # Nằm ngay phía trên nút bấm
+        padding=15,
+        content=ft.Column([
+            # Thanh tiêu đề AI
+            ft.Row([
+                ft.CircleAvatar(content=ft.Icon(ft.Icons.SMART_TOY_ROUNDED, color="white"), bgcolor="orange500", radius=16),
+                ft.Text("Trợ lý AI - Vios 2019", weight=ft.FontWeight.BOLD, color="blueAccent700", size=16),
+                ft.Container(expand=True),
+                ft.IconButton(ft.Icons.CLOSE_ROUNDED, on_click=lambda e: toggle_chat(False))
+            ]),
+            ft.Divider(color="grey300"),
             
-            ai_text_control = ft.Markdown("", selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_WEB)
-            ai_msg_bubble = ft.Container(
-                content=ai_text_control,
-                bgcolor="white",
-                padding=12,
-                border_radius=15,
-                # Đã thay thế hoàn toàn ft.Colors bằng chuỗi "black12" siêu an toàn
-                shadow=ft.BoxShadow(spread_radius=1, blur_radius=3, color="black12", offset=ft.Offset(0, 1)),
-                width=280
+            # Khu vực tin nhắn (Sẽ tích hợp Gemini vào đây ở bước sau)
+            ft.ListView(expand=True, auto_scroll=True, controls=[
+                ft.Container(
+                    content=ft.Text("Xin chào! Tôi thấy bạn đang xem Sơ đồ mạch điện A/C. Bạn cần tôi hướng dẫn đo kiểm chân cắm nào?", color="white"),
+                    bgcolor="blueAccent700", padding=12, border_radius=12
+                )
+            ]),
+            
+            # Ô nhập liệu
+            ft.TextField(
+                hint_text="Nhập thông số hoặc câu hỏi...",
+                border_radius=20,
+                content_padding=15,
+                filled=True,
+                fill_color="blueGrey50",
+                border_color="transparent"
             )
-            
-            ai_avatar = ft.CircleAvatar(content=ft.Icon(ft.Icons.SMART_TOY_ROUNDED, color="white"), bgcolor="orange400", radius=18)
-            ai_msg_row = ft.Row([ai_avatar, ai_msg_bubble], alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.END)
-            
-            chat_view.controls.append(ai_msg_row)
-            page.update()
+        ])
+    )
 
-            for chunk in response_stream:
-                ai_text_control.value += chunk.text
-                page.update()
-        
-        except Exception as ex:
-            if loading_row in chat_view.controls:
-                chat_view.controls.remove(loading_row)
-            add_message("Hệ thống", f"Lỗi kết nối API: {ex}")
-            page.update()
+    # Hàm bật/tắt cửa sổ AI
+    def toggle_chat(show: bool):
+        chat_window.visible = show
+        page.update()
 
-    txt_input = ft.TextField(
-        hint_text="Hỏi thông số, sơ đồ, pan bệnh...",
+    # Nút bấm bong bóng nổi (Floating Action Button)
+    fab = ft.FloatingActionButton(
+        icon=ft.Icons.FORUM_ROUNDED,
+        bgcolor="orange500",
+        right=20,
+        bottom=20,
+        on_click=lambda e: toggle_chat(not chat_window.visible)
+    )
+
+    # ---------------------------------------------------
+    # 2. THANH ĐIỀU HƯỚNG BÊN TRÁI (SIDEBAR)
+    # ---------------------------------------------------
+    sidebar = ft.Container(
+        width=280,
+        bgcolor="#1E293B", # Xám đen sang trọng
+        padding=15,
+        content=ft.Column([
+            # Logo phần mềm
+            ft.Row([
+                ft.Icon(ft.Icons.AUTO_AWESOME_MOTION_ROUNDED, color="blue400", size=30),
+                ft.Text("GDS AUTO EDU", color="white", weight=ft.FontWeight.BOLD, size=20),
+            ], alignment=ft.MainAxisAlignment.START),
+            ft.Divider(color="white24", height=30),
+            
+            # Cây thư mục (Tree View) chọn dòng xe
+            ft.ExpansionTile(
+                title=ft.Text("TOYOTA", color="white", weight=ft.FontWeight.BOLD),
+                initially_expanded=True,
+                icon_color="white",
+                controls=[
+                    ft.ExpansionTile(
+                        title=ft.Text("Vios (2019-2020)", color="white70"),
+                        initially_expanded=True,
+                        controls=[
+                            ft.ListTile(title=ft.Text("Sơ đồ mạch điện A/C", color="blue400"), icon=ft.Icons.ACCOUNT_TREE_ROUNDED, icon_color="blue400"),
+                            ft.ListTile(title=ft.Text("Vị trí giắc cắm hộp điều khiển", color="white54"), icon=ft.Icons.LOCATION_ON_ROUNDED, icon_color="white54"),
+                            ft.ListTile(title=ft.Text("Bảng thông số lực siết", color="white54"), icon=ft.Icons.BUILD_ROUNDED, icon_color="white54"),
+                        ]
+                    ),
+                    ft.ExpansionTile(
+                        title=ft.Text("Camry (2018-2021)", color="white70"),
+                        controls=[
+                            ft.ListTile(title=ft.Text("Sơ đồ mạch điện A/C", color="white54"), icon=ft.Icons.ACCOUNT_TREE_ROUNDED, icon_color="white54"),
+                        ]
+                    )
+                ]
+            )
+        ])
+    )
+
+    # ---------------------------------------------------
+    # 3. KHÔNG GIAN LÀM VIỆC CHÍNH (MAIN WORKSPACE)
+    # ---------------------------------------------------
+    main_workspace = ft.Container(
         expand=True,
-        border_radius=25,
-        filled=True,
-        fill_color="white",
-        border_color="transparent",
-        content_padding=15,
-        on_submit=on_send_click
-    )
-    
-    btn_send = ft.FloatingActionButton(
-        icon=ft.Icons.SEND_ROUNDED,
-        bgcolor="blueAccent700",
-        mini=True,
-        on_click=on_send_click
-    )
-    
-    input_row = ft.Row(
-        [txt_input, btn_send],
-        alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
-        vertical_alignment=ft.CrossAxisAlignment.CENTER
+        bgcolor="#F1F5F9", # Nền xám rất nhạt giúp dịu mắt khi xem bản vẽ
+        padding=20,
+        content=ft.Column([
+            # Tiêu đề tài liệu đang xem
+            ft.Row([
+                ft.Icon(ft.Icons.ACCOUNT_TREE_ROUNDED, color="blueGrey700"),
+                ft.Text("Sơ đồ mạch điện hệ thống điều hòa (A/C) - Toyota Vios 2019", size=22, weight=ft.FontWeight.BOLD, color="blueGrey900")
+            ]),
+            ft.Divider(color="grey300"),
+            
+            # Khu vực hiển thị bản vẽ / Hình ảnh / PDF
+            ft.Container(
+                expand=True,
+                bgcolor="white",
+                border_radius=10,
+                border=ft.border.all(1, "grey300"),
+                alignment=ft.alignment.center,
+                # Đang để tạm một ảnh sơ đồ mạch điện mẫu
+                content=ft.Image(src="https://i.imgur.com/39hNq1b.jpeg", fit=ft.ImageFit.CONTAIN) 
+            )
+        ])
     )
 
-    page.add(chat_view, input_row)
+    # ---------------------------------------------------
+    # GẮP NỐI TẤT CẢ LÊN MÀN HÌNH BẰNG STACK
+    # ---------------------------------------------------
+    main_layout = ft.Row([sidebar, main_workspace], expand=True, spacing=0)
 
-    try:
-        if uploaded_pdf_parts:
-            initial_prompt = ["Hãy đọc kỹ các Cẩm nang sửa chữa sau. Gửi một lời chào vui vẻ tới các bạn sinh viên và yêu cầu cung cấp tình trạng xe kèm DÒNG XE để tra cứu."] + uploaded_pdf_parts
-            response = chat_session.send_message(initial_prompt)
-        else:
-            response = chat_session.send_message("Hãy gửi một lời chào vui vẻ tới sinh viên và yêu cầu cung cấp tình trạng xe kèm DÒNG XE cụ thể để bắt đầu.")
-        add_message("AI", response.text)
-    except Exception as ex:
-        add_message("AI", f"Xin chào! Vui lòng làm mới trang web. Lỗi: {ex}")
+    page.add(
+        ft.Stack(
+            controls=[
+                main_layout,  # Lớp 1: Nền tảng phần mềm
+                chat_window,  # Lớp 2: Cửa sổ AI nằm đè lên
+                fab           # Lớp 3: Nút bấm gọi AI nằm trên cùng
+            ],
+            expand=True
+        )
+    )
 
 port = int(os.environ.get("PORT", 8080))
 ft.run(main, view=ft.AppView.WEB_BROWSER, host="0.0.0.0", port=port)
