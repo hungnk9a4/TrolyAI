@@ -81,17 +81,13 @@ def main(page: ft.Page):
             ], alignment=ft.MainAxisAlignment.START),
             ft.Divider(color="white24", height=30),
             
-            # Cây thư mục (Tree View) chọn dòng xe
+            # Cây thư mục (Tree View) chọn dòng xe - ĐÃ XÓA initially_expanded
             ft.ExpansionTile(
                 title=ft.Text("TOYOTA", color="white", weight=ft.FontWeight.BOLD),
-                initially_expanded=True,
-                icon_color="white",
                 controls=[
                     ft.ExpansionTile(
                         title=ft.Text("Vios (2019-2020)", color="white70"),
-                        initially_expanded=True,
                         controls=[
-                            # Đã sửa lỗi: Dùng leading=ft.Icon(...) thay cho icon=...
                             ft.ListTile(title=ft.Text("Sơ đồ mạch điện A/C", color="blue400"), leading=ft.Icon(ft.Icons.ACCOUNT_TREE_ROUNDED, color="blue400")),
                             ft.ListTile(title=ft.Text("Vị trí giắc cắm hộp điều khiển", color="white54"), leading=ft.Icon(ft.Icons.LOCATION_ON_ROUNDED, color="white54")),
                             ft.ListTile(title=ft.Text("Bảng thông số lực siết", color="white54"), leading=ft.Icon(ft.Icons.BUILD_ROUNDED, color="white54")),
