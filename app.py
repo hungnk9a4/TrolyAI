@@ -4,7 +4,7 @@ import os
 def main(page: ft.Page):
     # CẤU HÌNH TRANG TOÀN MÀN HÌNH
     page.title = "Nền tảng Tra cứu Kỹ thuật Ô tô - GDS Auto Edu"
-    page.padding = 0  # Tràn viền
+    page.padding = 0 
     page.theme_mode = ft.ThemeMode.LIGHT
     page.window_width = 1200
     page.window_height = 800
@@ -13,14 +13,14 @@ def main(page: ft.Page):
     # 1. CỬA SỔ AI CHAT (NỔI LƠ LỬNG)
     # ---------------------------------------------------
     chat_window = ft.Container(
-        visible=False, # Mặc định ẩn, chỉ hiện khi bấm nút
+        visible=False, 
         width=380,
         height=550,
         bgcolor="white",
         border_radius=15,
         shadow=ft.BoxShadow(spread_radius=1, blur_radius=15, color="black26", offset=ft.Offset(0, 5)),
         right=20,
-        bottom=80,  # Nằm ngay phía trên nút bấm
+        bottom=80, 
         padding=15,
         content=ft.Column([
             # Thanh tiêu đề AI
@@ -71,7 +71,7 @@ def main(page: ft.Page):
     # ---------------------------------------------------
     sidebar = ft.Container(
         width=280,
-        bgcolor="#1E293B", # Xám đen sang trọng
+        bgcolor="#1E293B", 
         padding=15,
         content=ft.Column([
             # Logo phần mềm
@@ -81,7 +81,7 @@ def main(page: ft.Page):
             ], alignment=ft.MainAxisAlignment.START),
             ft.Divider(color="white24", height=30),
             
-            # Cây thư mục (Tree View) chọn dòng xe - ĐÃ XÓA initially_expanded
+            # Cây thư mục (Tree View) chọn dòng xe 
             ft.ExpansionTile(
                 title=ft.Text("TOYOTA", color="white", weight=ft.FontWeight.BOLD),
                 controls=[
@@ -119,12 +119,11 @@ def main(page: ft.Page):
             ]),
             ft.Divider(color="grey300"),
             
-            # Khu vực hiển thị bản vẽ / Hình ảnh 
+            # Khu vực hiển thị bản vẽ / Hình ảnh (Đã gỡ bỏ border)
             ft.Container(
                 expand=True,
                 bgcolor="white",
                 border_radius=10,
-                border=ft.border.all(1, "grey300"),
                 alignment=ft.alignment.center,
                 content=ft.Image(src="https://i.imgur.com/39hNq1b.jpeg", fit=ft.ImageFit.CONTAIN) 
             )
@@ -139,9 +138,9 @@ def main(page: ft.Page):
     page.add(
         ft.Stack(
             controls=[
-                main_layout,  # Lớp 1: Nền tảng phần mềm
-                chat_window,  # Lớp 2: Cửa sổ AI nằm đè lên
-                fab           # Lớp 3: Nút bấm gọi AI nằm trên cùng
+                main_layout,  
+                chat_window,  
+                fab           
             ],
             expand=True
         )
