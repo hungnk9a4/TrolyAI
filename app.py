@@ -32,7 +32,7 @@ def main(page: ft.Page):
             ]),
             ft.Divider(color="grey300"),
             
-            # Khu vực tin nhắn (Sẽ tích hợp Gemini vào đây ở bước sau)
+            # Khu vực tin nhắn 
             ft.ListView(expand=True, auto_scroll=True, controls=[
                 ft.Container(
                     content=ft.Text("Xin chào! Tôi thấy bạn đang xem Sơ đồ mạch điện A/C. Bạn cần tôi hướng dẫn đo kiểm chân cắm nào?", color="white"),
@@ -91,15 +91,16 @@ def main(page: ft.Page):
                         title=ft.Text("Vios (2019-2020)", color="white70"),
                         initially_expanded=True,
                         controls=[
-                            ft.ListTile(title=ft.Text("Sơ đồ mạch điện A/C", color="blue400"), icon=ft.Icons.ACCOUNT_TREE_ROUNDED, icon_color="blue400"),
-                            ft.ListTile(title=ft.Text("Vị trí giắc cắm hộp điều khiển", color="white54"), icon=ft.Icons.LOCATION_ON_ROUNDED, icon_color="white54"),
-                            ft.ListTile(title=ft.Text("Bảng thông số lực siết", color="white54"), icon=ft.Icons.BUILD_ROUNDED, icon_color="white54"),
+                            # Đã sửa lỗi: Dùng leading=ft.Icon(...) thay cho icon=...
+                            ft.ListTile(title=ft.Text("Sơ đồ mạch điện A/C", color="blue400"), leading=ft.Icon(ft.Icons.ACCOUNT_TREE_ROUNDED, color="blue400")),
+                            ft.ListTile(title=ft.Text("Vị trí giắc cắm hộp điều khiển", color="white54"), leading=ft.Icon(ft.Icons.LOCATION_ON_ROUNDED, color="white54")),
+                            ft.ListTile(title=ft.Text("Bảng thông số lực siết", color="white54"), leading=ft.Icon(ft.Icons.BUILD_ROUNDED, color="white54")),
                         ]
                     ),
                     ft.ExpansionTile(
                         title=ft.Text("Camry (2018-2021)", color="white70"),
                         controls=[
-                            ft.ListTile(title=ft.Text("Sơ đồ mạch điện A/C", color="white54"), icon=ft.Icons.ACCOUNT_TREE_ROUNDED, icon_color="white54"),
+                            ft.ListTile(title=ft.Text("Sơ đồ mạch điện A/C", color="white54"), leading=ft.Icon(ft.Icons.ACCOUNT_TREE_ROUNDED, color="white54")),
                         ]
                     )
                 ]
@@ -112,7 +113,7 @@ def main(page: ft.Page):
     # ---------------------------------------------------
     main_workspace = ft.Container(
         expand=True,
-        bgcolor="#F1F5F9", # Nền xám rất nhạt giúp dịu mắt khi xem bản vẽ
+        bgcolor="#F1F5F9", 
         padding=20,
         content=ft.Column([
             # Tiêu đề tài liệu đang xem
@@ -122,14 +123,13 @@ def main(page: ft.Page):
             ]),
             ft.Divider(color="grey300"),
             
-            # Khu vực hiển thị bản vẽ / Hình ảnh / PDF
+            # Khu vực hiển thị bản vẽ / Hình ảnh 
             ft.Container(
                 expand=True,
                 bgcolor="white",
                 border_radius=10,
                 border=ft.border.all(1, "grey300"),
                 alignment=ft.alignment.center,
-                # Đang để tạm một ảnh sơ đồ mạch điện mẫu
                 content=ft.Image(src="https://i.imgur.com/39hNq1b.jpeg", fit=ft.ImageFit.CONTAIN) 
             )
         ])
