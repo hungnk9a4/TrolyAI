@@ -15,7 +15,6 @@ if not os.path.exists(assets_dir):
 # 1. CHUYỂN ĐỔI PDF THÀNH ẢNH (ĐÃ CHUẨN HÓA ĐƯỜNG DẪN)
 # ---------------------------------------------------
 def convert_pdf_to_images(rel_pdf_path):
-    # Chuẩn hóa đường dẫn cho phù hợp với hệ điều hành Linux/Windows
     norm_rel_path = os.path.normpath(rel_pdf_path)
     full_pdf_path = os.path.join(assets_dir, norm_rel_path)
     
@@ -23,7 +22,6 @@ def convert_pdf_to_images(rel_pdf_path):
         print(f"Không tìm thấy file: {full_pdf_path}")
         return []
 
-    # Tạo tên ảnh duy nhất
     clean_prefix = norm_rel_path.replace(os.sep, "_").replace("/", "_").replace("\\", "_")
     clean_prefix = os.path.splitext(clean_prefix)[0]
     
@@ -36,10 +34,7 @@ def convert_pdf_to_images(rel_pdf_path):
             if not os.path.exists(img_path):
                 pix = page.get_pixmap(dpi=150)
                 pix.save(img_path)
-            
-            # Đường dẫn phục vụ hiển thị web (luôn dùng dấu /)
-            web_img_path = img_name
-            img_files.append(web_img_path)
+            img_files.append(img_name)
     except Exception as ex:
         print(f"Lỗi chuyển đổi PDF {full_pdf_path}: {ex}")
     return img_files
@@ -181,9 +176,6 @@ def main(page: ft.Page):
         ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
     )
 
-    # ---------------------------------------------------
-    # HÀM MỞ FILE VỚI GIAO DIỆN MỞ RỘNG TOÀN MÀN HÌNH
-    # ---------------------------------------------------
     def load_document(title, rel_pdf_path):
         doc_title.value = title
         img_files = convert_pdf_to_images(rel_pdf_path)
@@ -211,10 +203,14 @@ def main(page: ft.Page):
     )
 
     # ---------------------------------------------------
-    # HÀM TẠO MENU LỒNG NHAU ĐA TẦNG DỰA TRÊN THƯ MỤC
+    # HÀM TẠO MENU THỤT LỀ BẬC THANG & CỠ CHỮ NHỎ TÙY CHỈNH
     # ---------------------------------------------------
-    def create_menu_nodes(tree_dict, current_path=""):
+    def create_menu_nodes(tree_dict, current_path="", level=0):
         controls = []
+        # Cỡ chữ giảm dần theo tầng
+        font_sizes = [13, 12, 12, 11, 11, 11]
+        icon_colors = ["orange600", "blue600", "teal600", "purple600", "indigo600", "blueGrey600"]
+        
         for key, value in sorted(tree_dict.items()):
             if key == "__files__":
                 continue
@@ -226,22 +222,43 @@ def main(page: ft.Page):
             new_path = os.path.join(current_path, key) if current_path else key
             
             if sub_folders:
-                sub_controls.extend(create_menu_nodes(sub_folders, new_path))
+                sub_controls.extend(create_menu_nodes(sub_folders, new_path, level + 1))
             
             for f in sorted(files):
                 doc_name = os.path.splitext(f)[0]
                 full_rel_path = os.path.join(new_path, f)
+                
+                # Thụt lề bậc thang cho file PDF
+                file_indent = (level + 1) * 10
+                
                 sub_controls.append(
                     ft.ListTile(
-                        title=ft.Text(doc_name, color="#334155", weight=ft.FontWeight.BOLD),
-                        leading=ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="red400"),
+                        dense=True,
+                        leading=ft.Row([
+                            ft.Container(width=file_indent) if file_indent > 0 else ft.Container(width=0),
+                            ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="red500", size=15)
+                        ], spacing=2, tight=True),
+                        title=ft.Text(doc_name, color="#334155", size=11, weight=ft.FontWeight.W_500),
                         on_click=lambda e, path=full_rel_path, name=doc_name: load_document(name, path)
                     )
                 )
             
+            current_size = font_sizes[min(level, len(font_sizes)-1)]
+            current_color = icon_colors[min(level, len(icon_colors)-1)]
+            folder_indent = level * 10
+            
+            folder_icon = ft.Icons.DIRECTIONS_CAR_ROUNDED if level == 0 else (ft.Icons.FOLDER_ROUNDED if sub_folders else ft.Icons.FOLDER_OPEN_ROUNDED)
+            
+            leading_control = ft.Row([
+                ft.Container(width=folder_indent) if folder_indent > 0 else ft.Container(width=0),
+                ft.Icon(folder_icon, color=current_color, size=16)
+            ], spacing=2, tight=True)
+
             controls.append(
                 ft.ExpansionTile(
-                    title=ft.Text(key, weight=ft.FontWeight.BOLD, color="#1E293B"),
+                    dense=True,
+                    title=ft.Text(key, weight=ft.FontWeight.BOLD if level < 2 else ft.FontWeight.W_500, size=current_size, color="#0F172A"),
+                    leading=leading_control,
                     controls=sub_controls
                 )
             )
@@ -253,9 +270,9 @@ def main(page: ft.Page):
         menu_controls = [ft.Text("Đang chờ tạo thư mục xe trong assets...", color="grey", italic=True)]
 
     sidebar = ft.Container(
-        width=320, bgcolor="#F8FAFC", padding=15,
+        width=330, bgcolor="#F8FAFC", padding=10,
         content=ft.Column([
-            ft.Text("DANH MỤC HÃNG XE & HỆ THỐNG", weight=ft.FontWeight.BOLD, color="grey700", size=13),
+            ft.Text("DANH MỤC HÃNG XE & HỆ THỐNG", weight=ft.FontWeight.BOLD, color="grey700", size=12),
             ft.Column(controls=menu_controls, scroll=ft.ScrollMode.AUTO, expand=True)
         ])
     )
