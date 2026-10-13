@@ -2,44 +2,62 @@ import flet as ft
 from google import genai
 from google.genai import types
 import os
-import fitz  # PyMuPDF - Chuyển đổi PDF thành ảnh sắc nét tốc độ cao
+import fitz  # PyMuPDF
 
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key) if api_key else None
 
-# ---------------------------------------------------
-# QUÉT VÀ TỰ ĐỘNG CHUYỂN ĐỔI PDF THÀNH ẢNH
-# ---------------------------------------------------
 assets_dir = "assets"
 if not os.path.exists(assets_dir):
     os.makedirs(assets_dir)
 
-def convert_pdf_to_images(pdf_filename):
-    """Chuyển các trang của file PDF thành danh sách ảnh PNG sắc nét"""
-    pdf_path = os.path.join(assets_dir, pdf_filename)
-    base_name = os.path.splitext(pdf_filename)[0]
+# ---------------------------------------------------
+# 1. CHUYỂN ĐỔI PDF THÀNH ẢNH SẮC NÉT TỰ ĐỘNG
+# ---------------------------------------------------
+def convert_pdf_to_images(rel_pdf_path):
+    full_pdf_path = os.path.join(assets_dir, rel_pdf_path)
+    # Tạo tên ảnh duy nhất tránh trùng lặp giữa các thư mục
+    clean_prefix = rel_pdf_path.replace(os.sep, "_").replace("/", "_").replace("\\", "_")
+    clean_prefix = os.path.splitext(clean_prefix)[0]
+    
     img_files = []
     try:
-        doc = fitz.open(pdf_path)
+        doc = fitz.open(full_pdf_path)
         for i, page in enumerate(doc):
-            img_name = f"{base_name}_page_{i+1}.png"
+            img_name = f"{clean_prefix}_page_{i+1}.png"
             img_path = os.path.join(assets_dir, img_name)
-            # Chỉ xuất ảnh nếu chưa tồn tại để tối ưu tốc độ
             if not os.path.exists(img_path):
-                pix = page.get_pixmap(dpi=150)  # 150 DPI tra cứu rất nét
+                pix = page.get_pixmap(dpi=150)
                 pix.save(img_path)
             img_files.append(img_name)
     except Exception as ex:
-        print(f"Lỗi chuyển đổi PDF {pdf_filename}: {ex}")
+        print(f"Lỗi chuyển đổi PDF {rel_pdf_path}: {ex}")
     return img_files
 
-# Quét tất cả file PDF có trong thư mục assets
-pdf_files_for_menu = []
-for filename in os.listdir(assets_dir):
-    if filename.lower().endswith(".pdf"):
-        pdf_files_for_menu.append(filename)
-        # Chuyển đổi sẵn ngay khi khởi động app
-        convert_pdf_to_images(filename)
+# ---------------------------------------------------
+# 2. XÂY DỰNG CÂY THƯ MỤC TỰ ĐỘNG
+# ---------------------------------------------------
+def build_file_tree(root_directory):
+    tree = {}
+    for root, dirs, files in os.walk(root_directory):
+        rel_path = os.path.relpath(root, root_directory)
+        if rel_path == ".":
+            pdf_in_root = [f for f in files if f.lower().endswith(".pdf")]
+            if pdf_in_root:
+                tree["__files__"] = pdf_in_root
+            continue
+        
+        parts = rel_path.split(os.sep)
+        current = tree
+        for part in parts:
+            if part not in current:
+                current[part] = {}
+            current = current[part]
+        
+        pdf_files = [f for f in files if f.lower().endswith(".pdf")]
+        if pdf_files:
+            current["__files__"] = pdf_files
+    return tree
 
 system_instruction = """
 Bạn là một Chuyên gia chẩn đoán kỹ thuật ô tô cấp cao, được tích hợp trong phần mềm GDS Auto Edu.
@@ -149,21 +167,15 @@ def main(page: ft.Page):
         content=ft.Column([
             ft.Icon(ft.Icons.DIRECTIONS_CAR_ROUNDED, size=80, color="blueGrey200"),
             ft.Text("HỆ THỐNG TRA CỨU ALLDATA EDU", weight=ft.FontWeight.BOLD, color="blueGrey400", size=24),
-            ft.Text("Hãy chọn sơ đồ từ cây thư mục hệ thống bên trái", color="blueGrey300")
+            ft.Text("Hãy chọn hãng xe và hệ thống từ cây thư mục bên trái", color="blueGrey300")
         ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
     )
 
-    # ---------------------------------------------------
-    # HÀM MỞ FILE DẠNG HÌNH ẢNH SIÊU TỐC
-    # ---------------------------------------------------
-    def load_document(title, pdf_file):
+    def load_document(title, rel_pdf_path):
         doc_title.value = title
-        img_files = convert_pdf_to_images(pdf_file)
+        img_files = convert_pdf_to_images(rel_pdf_path)
         if img_files:
-            # Tạo danh sách các trang ảnh xếp dọc
-            image_controls = [
-                ft.Image(src=f"/{img}", fit="contain") for img in img_files
-            ]
+            image_controls = [ft.Image(src=f"/{img}", fit="contain") for img in img_files]
             doc_display_area.content = ft.ListView(
                 controls=image_controls,
                 expand=True,
@@ -171,7 +183,6 @@ def main(page: ft.Page):
             )
         else:
             doc_display_area.content = ft.Text("Không thể tải tài liệu này.", color="red")
-            
         page.update()
 
     top_bar = ft.Container(
@@ -184,31 +195,50 @@ def main(page: ft.Page):
     )
 
     # ---------------------------------------------------
-    # TỰ ĐỘNG TẠO MENU BÊN TRÁI
+    # HÀM TẠO MENU LỒNG NHAU ĐA TẦNG DỰA TRÊN THƯ MỤC
     # ---------------------------------------------------
-    menu_controls = []
-    if not pdf_files_for_menu:
-        menu_controls.append(ft.Text("Đang chờ tải tài liệu vào thư mục assets...", color="grey", italic=True))
-    else:
-        for pdf_file in sorted(pdf_files_for_menu):
-            doc_name = pdf_file.replace(".pdf", "").replace(".PDF", "")
-            menu_controls.append(
-                ft.ListTile(
-                    title=ft.Text(doc_name, color="#334155", weight=ft.FontWeight.BOLD), 
-                    leading=ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="red400"),
-                    on_click=lambda e, f=pdf_file, n=doc_name: load_document(n, f)
+    def create_menu_nodes(tree_dict, current_path=""):
+        controls = []
+        for key, value in sorted(tree_dict.items()):
+            if key == "__files__":
+                continue
+            
+            files = value.get("__files__", [])
+            sub_folders = {k: v for k, v in value.items() if k != "__files__"}
+            
+            sub_controls = []
+            if sub_folders:
+                sub_controls.extend(create_menu_nodes(sub_folders, os.path.join(current_path, key) if current_path else key))
+            
+            for f in sorted(files):
+                doc_name = os.path.splitext(f)[0]
+                full_rel_path = os.path.join(current_path, key, f) if current_path else os.path.join(key, f)
+                sub_controls.append(
+                    ft.ListTile(
+                        title=ft.Text(doc_name, color="#334155", weight=ft.FontWeight.BOLD),
+                        leading=ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="red400"),
+                        on_click=lambda e, path=full_rel_path, name=doc_name: load_document(name, path)
+                    )
+                )
+            
+            controls.append(
+                ft.ExpansionTile(
+                    title=ft.Text(key, weight=ft.FontWeight.BOLD, color="#1E293B"),
+                    controls=sub_controls
                 )
             )
+        return controls
+
+    file_tree = build_file_tree(assets_dir)
+    menu_controls = create_menu_nodes(file_tree)
+    if not menu_controls:
+        menu_controls = [ft.Text("Đang chờ tạo thư mục xe trong assets...", color="grey", italic=True)]
 
     sidebar = ft.Container(
-        width=300, bgcolor="#F8FAFC", padding=15,
+        width=320, bgcolor="#F8FAFC", padding=15,
         content=ft.Column([
-            ft.Text("HỆ THỐNG TRÊN XE (SYSTEM)", weight=ft.FontWeight.BOLD, color="grey700", size=13),
-            ft.ExpansionTile(
-                title=ft.Text("BẢN VẼ KỸ THUẬT", weight=ft.FontWeight.BOLD, color="#1E293B"),
-                leading=ft.Icon(ft.Icons.FOLDER_SPECIAL_ROUNDED, color="orange500"),
-                controls=menu_controls
-            )
+            ft.Text("DANH MỤC HÃNG XE & HỆ THỐNG", weight=ft.FontWeight.BOLD, color="grey700", size=13),
+            ft.Column(controls=menu_controls, scroll=ft.ScrollMode.AUTO, expand=True)
         ])
     )
 
