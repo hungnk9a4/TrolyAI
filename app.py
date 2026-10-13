@@ -1,5 +1,4 @@
 import flet as ft
-import flet_webview as fwv
 from google import genai
 from google.genai import types
 import os
@@ -7,6 +6,9 @@ import os
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
+# ---------------------------------------------------
+# QUÉT THƯ MỤC ASSETS ĐỂ LẤY FILE PDF
+# ---------------------------------------------------
 assets_dir = "assets"
 uploaded_pdf_parts = []
 pdf_files_for_menu = [] 
@@ -17,12 +19,6 @@ if not os.path.exists(assets_dir):
 for filename in os.listdir(assets_dir):
     if filename.lower().endswith(".pdf"):
         pdf_files_for_menu.append(filename)
-        file_path = os.path.join(assets_dir, filename)
-        try:
-            g_file = client.files.upload(file=file_path)
-            uploaded_pdf_parts.append(g_file)
-        except Exception as e:
-            print(f"Lỗi nạp file cho AI: {e}")
 
 system_instruction = """
 Bạn là một Chuyên gia chẩn đoán kỹ thuật ô tô cấp cao, được tích hợp trong phần mềm GDS Auto Edu.
@@ -136,13 +132,19 @@ def main(page: ft.Page):
         ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
     )
 
-    def load_document(title, pdf_path):
+    # ---------------------------------------------------
+    # HÀM MỞ FILE CHẠY TRỰC TIẾP TỐC ĐỘ CAO
+    # ---------------------------------------------------
+    def load_document(title, pdf_file):
         doc_title.value = title
-        if pdf_path:
-            doc_display_area.content = fwv.WebView(url=pdf_path, expand=True)
-        try:
-            chat_session.send_message(f"Sinh viên vừa mở: {title}")
-        except: pass
+        if pdf_file:
+            # Nhúng PDF trực tiếp qua thẻ embed HTML tiêu chuẩn của trình duyệt
+            embed_code = f'<embed src="/{pdf_file}" type="application/pdf" width="100%" height="700px" />'
+            doc_display_area.content = ft.Markdown(
+                embed_code,
+                extension_set=ft.MarkdownExtensionSet.GITHUB_WEB
+            )
+        # Cập nhật UI ngay lập tức không qua trung gian AI
         page.update()
 
     top_bar = ft.Container(
@@ -154,6 +156,9 @@ def main(page: ft.Page):
         ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
     )
 
+    # ---------------------------------------------------
+    # TỰ ĐỘNG TẠO MENU BÊN TRÁI
+    # ---------------------------------------------------
     menu_controls = []
     if not pdf_files_for_menu:
         menu_controls.append(ft.Text("Đang chờ tải tài liệu vào thư mục assets...", color="grey", italic=True))
@@ -164,13 +169,12 @@ def main(page: ft.Page):
                 ft.ListTile(
                     title=ft.Text(doc_name, color="#334155", weight=ft.FontWeight.BOLD), 
                     leading=ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="red400"),
-                    on_click=lambda e, f=pdf_file, n=doc_name: load_document(n, f"/{f}")
+                    on_click=lambda e, f=pdf_file, n=doc_name: load_document(n, f)
                 )
             )
 
     sidebar = ft.Container(
         width=300, bgcolor="#F8FAFC", padding=15,
-        # Đã lược bỏ thuộc tính border.only gây lỗi tương thích
         content=ft.Column([
             ft.Text("HỆ THỐNG TRÊN XE (SYSTEM)", weight=ft.FontWeight.BOLD, color="grey700", size=13),
             ft.ExpansionTile(
@@ -194,13 +198,7 @@ def main(page: ft.Page):
     main_layout = ft.Column([top_bar, body_layout], expand=True, spacing=0)
     page.add(ft.Stack(controls=[main_layout, chat_window, fab], expand=True))
 
-    try:
-        if uploaded_pdf_parts:
-            chat_session.send_message(["Hãy đọc các bản vẽ. Chào sinh viên ngắn gọn."] + uploaded_pdf_parts)
-        else:
-            chat_session.send_message("Xin chào.")
-        add_message("AI", "Xin chào! Trợ lý AI đã sẵn sàng hỗ trợ bạn tra cứu mạch điện.")
-    except: pass
+    add_message("AI", "Xin chào! Trợ lý AI đã sẵn sàng hỗ trợ bạn tra cứu mạch điện.")
 
 port = int(os.environ.get("PORT", 8080))
 ft.run(main, view=ft.AppView.WEB_BROWSER, host="0.0.0.0", port=port, assets_dir="assets")
