@@ -34,7 +34,7 @@ config = types.GenerateContentConfig(
 )
 
 def main(page: ft.Page):
-    page.title = "Nền tảng Tra cứu Kỹ thuật Ô tô - GDS Auto Edu"
+    page.title = "GDS Auto Edu - Nền tảng Tra cứu ALLDATA"
     page.padding = 0 
     page.theme_mode = ft.ThemeMode.LIGHT
     page.window_width = 1200
@@ -107,7 +107,7 @@ def main(page: ft.Page):
             add_message("Hệ thống", f"Lỗi: {ex}")
 
     chat_input = ft.TextField(
-        hint_text="Hỏi AI về pan bệnh này...",
+        hint_text="Hỏi AI về hệ thống này...",
         border_radius=25,
         content_padding=15,
         filled=True,
@@ -131,7 +131,7 @@ def main(page: ft.Page):
         content=ft.Column([
             ft.Row([
                 ft.CircleAvatar(content=ft.Icon(ft.Icons.SMART_TOY_ROUNDED, color="white"), bgcolor="orange500", radius=16),
-                ft.Text("Trợ lý AI - Vios", weight=ft.FontWeight.BOLD, color="blueAccent700", size=16),
+                ft.Text("Trợ lý AI ALLDATA", weight=ft.FontWeight.BOLD, color="blueAccent700", size=16),
                 ft.Container(expand=True),
                 ft.IconButton(ft.Icons.CLOSE_ROUNDED, on_click=lambda e: toggle_chat(False))
             ]),
@@ -154,106 +154,154 @@ def main(page: ft.Page):
     )
 
     # ---------------------------------------------------
-    # KHU VỰC HIỂN THỊ CHÍNH (BIẾN ĐỘNG)
+    # KHU VỰC HIỂN THỊ CHÍNH (WORKSPACE)
     # ---------------------------------------------------
-    doc_title = ft.Text("Trang chủ - Xin mời chọn tài liệu", size=22, weight=ft.FontWeight.BOLD, color="blueGrey900")
+    doc_title = ft.Text("Trang chủ", size=22, weight=ft.FontWeight.BOLD, color="#1E293B")
     
-    welcome_view = ft.Column([
-        ft.Icon(ft.Icons.DIRECTIONS_CAR_ROUNDED, size=80, color="blueGrey200"),
-        ft.Text("GDS AUTO EDU", weight=ft.FontWeight.BOLD, color="blueGrey400", size=24),
-        ft.Text("Hãy chọn dòng xe và tài liệu từ menu bên trái", color="blueGrey300")
-    ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+    # Nút bấm mở PDF
+    pdf_btn = ft.ElevatedButton(
+        text="Mở bản vẽ PDF (Phóng to/Thu nhỏ nét chuẩn)", 
+        icon=ft.Icons.PICTURE_AS_PDF_ROUNDED,
+        bgcolor="red600",
+        color="white",
+        visible=False,
+        on_click=lambda e: page.launch_url(pdf_btn.data) if pdf_btn.data else None
+    )
 
-    doc_image = ft.Image(src="", fit="contain", visible=False, expand=True)
-
-    # Đã xóa dòng gây lỗi alignment=ft.alignment.center ở đây
     doc_display_area = ft.Container(
         expand=True,
         bgcolor="white",
         border_radius=10,
-        content=welcome_view
+        padding=30,
+        content=ft.Column([
+            ft.Icon(ft.Icons.DIRECTIONS_CAR_ROUNDED, size=80, color="blueGrey200"),
+            ft.Text("HỆ THỐNG TRA CỨU ALLDATA EDU", weight=ft.FontWeight.BOLD, color="blueGrey400", size=24),
+            ft.Text("Hãy chọn sơ đồ từ cây thư mục hệ thống bên trái", color="blueGrey300")
+        ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
     )
 
-    # ---------------------------------------------------
-    # HÀM ĐỔI NỘI DUNG KHI CLICK MENU
-    # ---------------------------------------------------
-    def load_document(title, image_url):
+    def load_document(title, pdf_url):
         doc_title.value = title
-        if image_url:
-            doc_image.src = image_url
-            doc_image.visible = True
-            doc_display_area.content = doc_image
-        else:
-            doc_image.visible = False
-            doc_display_area.content = ft.Text("Dữ liệu đang được cập nhật...", color="grey")
+        if pdf_url:
+            pdf_btn.data = pdf_url
+            pdf_btn.visible = True
+            doc_display_area.content = ft.Column([
+                ft.Icon(ft.Icons.ACCOUNT_TREE_ROUNDED, size=60, color="blueGrey200"),
+                ft.Text(title, weight=ft.FontWeight.BOLD, size=18, color="blueGrey700"),
+                ft.Container(height=20),
+                pdf_btn,
+                ft.Container(height=10),
+                ft.Text("Mẹo: Nhấn nút trên để mở bản vẽ PDF từ Google Drive. Bạn có thể zoom để xem chi tiết từng đường dây.", italic=True, color="grey")
+            ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
         
         try:
-            chat_session.send_message(f"Sinh viên vừa mở tài liệu: {title}. Hãy chuẩn bị sẵn sàng trả lời nếu họ hỏi.")
+            chat_session.send_message(f"Sinh viên vừa mở tài liệu: {title}.")
         except:
             pass
-
         page.update()
+
+    # ---------------------------------------------------
+    # THANH TOP BAR (Phong cách ALLDATA)
+    # ---------------------------------------------------
+    top_bar = ft.Container(
+        bgcolor="#0F172A",
+        height=60,
+        padding=ft.padding.symmetric(horizontal=20),
+        content=ft.Row([
+            ft.Row([
+                ft.Icon(ft.Icons.DIRECTIONS_CAR, color="orange500", size=30),
+                ft.Text("GDS AUTO EDU", color="white", weight=ft.FontWeight.BOLD, size=20)
+            ]),
+            ft.Container(
+                content=ft.TextField(
+                    hint_text="Tìm kiếm linh kiện, sơ đồ mạch điện...",
+                    bgcolor="#1E293B",
+                    border_color="transparent",
+                    color="white",
+                    border_radius=5,
+                    content_padding=10,
+                    prefix_icon=ft.Icons.SEARCH,
+                ),
+                width=400
+            ),
+            ft.Row([
+                ft.Icon(ft.Icons.NOTIFICATIONS, color="white"),
+                ft.Container(width=10),
+                ft.CircleAvatar(content=ft.Icon(ft.Icons.PERSON, color="white"), bgcolor="grey700")
+            ])
+        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+    )
 
     # ---------------------------------------------------
     # THANH ĐIỀU HƯỚNG BÊN TRÁI (SIDEBAR)
     # ---------------------------------------------------
     sidebar = ft.Container(
-        width=280,
-        bgcolor="#1E293B", 
-        padding=15,
+        width=300,
+        bgcolor="#F8FAFC", 
+        padding=10,
+        border=ft.border.only(right=ft.border.BorderSide(1, "grey300")),
         content=ft.Column([
-            ft.Row([
-                ft.Icon(ft.Icons.AUTO_AWESOME_MOTION_ROUNDED, color="blue400", size=30),
-                ft.Text("GDS AUTO EDU", color="white", weight=ft.FontWeight.BOLD, size=20),
-            ], alignment=ft.MainAxisAlignment.START),
-            ft.Divider(color="white24", height=30),
+            ft.Text("HỆ THỐNG TRÊN XE (SYSTEM)", weight=ft.FontWeight.BOLD, color="grey700", size=13),
             
             ft.ExpansionTile(
-                title=ft.Text("TOYOTA", color="white", weight=ft.FontWeight.BOLD),
+                title=ft.Text("BRAKE (Hệ thống phanh)", weight=ft.FontWeight.BOLD, color="#1E293B"),
+                leading=ft.Icon(ft.Icons.SPEED_ROUNDED, color="red500"),
                 controls=[
-                    ft.ExpansionTile(
-                        title=ft.Text("Vios (2019-2020)", color="white70"),
-                        controls=[
-                            ft.ListTile(
-                                title=ft.Text("Sơ đồ mạch điện A/C", color="white"), 
-                                leading=ft.Icon(ft.Icons.ACCOUNT_TREE_ROUNDED, color="blue400"),
-                                on_click=lambda e: load_document("Sơ đồ mạch điện A/C - Toyota Vios 2019", "https://placehold.co/1000x700/E2E8F0/1E293B?text=SO+DO+MACH+DIEN+DIEU+HOA+VIOS")
-                            ),
-                            ft.ListTile(
-                                title=ft.Text("Vị trí giắc cắm hộp A/C", color="white"), 
-                                leading=ft.Icon(ft.Icons.LOCATION_ON_ROUNDED, color="blue400"),
-                                on_click=lambda e: load_document("Vị trí giắc cắm hộp điều khiển A/C - Toyota Vios 2019", "https://placehold.co/1000x700/E2E8F0/1E293B?text=VI+TRI+GIAC+CAM+TREN+XE")
-                            ),
-                            ft.ListTile(
-                                title=ft.Text("Lực siết ốc lốc lạnh", color="white"), 
-                                leading=ft.Icon(ft.Icons.BUILD_ROUNDED, color="blue400"),
-                                on_click=lambda e: load_document("Bảng lực siết ốc hệ thống A/C - Toyota Vios 2019", "https://placehold.co/1000x700/E2E8F0/1E293B?text=BANG+LUC+SIET+OC+TIEU+CHUAN")
-                            ),
-                        ]
-                    )
+                    # Tích hợp Dữ liệu Google Drive thật của Thầy Hưng
+                    ft.ListTile(
+                        title=ft.Text("Sơ đồ TRC-H-F", color="#334155"), 
+                        leading=ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="red400"),
+                        on_click=lambda e: load_document("Sơ đồ mạch điện TRC-H-F", "https://drive.google.com/file/d/1T2sntqGfpM3mC04mSz95IsSVgaK-J51N/preview")
+                    ),
+                    ft.ListTile(
+                        title=ft.Text("Sơ đồ TRC-S-F", color="#334155"), 
+                        leading=ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="red400"),
+                        on_click=lambda e: load_document("Sơ đồ mạch điện TRC-S-F", "https://drive.google.com/file/d/1NdXgLAd7oNRYbZ4XYAjDyyrKbarf0K0f/preview")
+                    ),
+                    ft.ListTile(
+                        title=ft.Text("Sơ đồ VSC-H-F", color="#334155"), 
+                        leading=ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="red400"),
+                        on_click=lambda e: load_document("Sơ đồ mạch điện VSC-H-F", "https://drive.google.com/file/d/1pUCuG1PgDOnaMtnMTRUI55y3O1y597ue/preview")
+                    ),
+                    ft.ListTile(
+                        title=ft.Text("Sơ đồ VSC-SD", color="#334155"), 
+                        leading=ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="red400"),
+                        on_click=lambda e: load_document("Sơ đồ mạch điện VSC-SD", "https://drive.google.com/file/d/1cIiF1Bao0spW8migy-X9rHHTjfSUhqS2/preview")
+                    ),
+                    ft.ListTile(
+                        title=ft.Text("Sơ đồ EBD SD", color="#334155"), 
+                        leading=ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="red400"),
+                        on_click=lambda e: load_document("Sơ đồ mạch điện EBD SD", "https://drive.google.com/file/d/1ebXdWhJgySd5-K_i_TXMg_s3c_Hn8N_i/preview")
+                    ),
                 ]
+            ),
+            ft.ExpansionTile(
+                title=ft.Text("POWER SOURCE (Nguồn điện)", weight=ft.FontWeight.BOLD, color="#1E293B"),
+                leading=ft.Icon(ft.Icons.BATTERY_CHARGING_FULL_ROUNDED, color="green500")
+            ),
+            ft.ExpansionTile(
+                title=ft.Text("STEERING (Hệ thống lái)", weight=ft.FontWeight.BOLD, color="#1E293B"),
+                leading=ft.Icon(ft.Icons.COMPASS_CALIBRATION_ROUNDED, color="blue500")
             )
         ])
     )
 
-    # ---------------------------------------------------
-    # KHÔNG GIAN LÀM VIỆC CHÍNH
-    # ---------------------------------------------------
     main_workspace = ft.Container(
         expand=True,
-        bgcolor="#F1F5F9", 
+        bgcolor="#E2E8F0", 
         padding=20,
         content=ft.Column([
             ft.Row([
-                ft.Icon(ft.Icons.ACCOUNT_TREE_ROUNDED, color="blueGrey700"),
+                ft.Icon(ft.Icons.FOLDER_OPEN_ROUNDED, color="blueGrey700"),
                 doc_title
             ]),
-            ft.Divider(color="grey300"),
+            ft.Divider(color="grey400"),
             doc_display_area 
         ])
     )
 
-    main_layout = ft.Row([sidebar, main_workspace], expand=True, spacing=0)
+    body_layout = ft.Row([sidebar, main_workspace], expand=True, spacing=0)
+    main_layout = ft.Column([top_bar, body_layout], expand=True, spacing=0)
 
     page.add(
         ft.Stack(
@@ -264,11 +312,11 @@ def main(page: ft.Page):
 
     try:
         if uploaded_pdf_parts:
-            initial_prompt = ["Đọc các Cẩm nang sau. Chào sinh viên ngắn gọn và chờ câu hỏi."] + uploaded_pdf_parts
-            response = chat_session.send_message(initial_prompt)
+            initial_prompt = ["Đọc các Cẩm nang sau. Chào sinh viên ngắn gọn."] + uploaded_pdf_parts
+            chat_session.send_message(initial_prompt)
         else:
-            response = chat_session.send_message("Hãy gửi một lời chào ngắn gọn tới sinh viên và yêu cầu câu hỏi.")
-        add_message("AI", response.text)
+            chat_session.send_message("Xin chào.")
+        add_message("AI", "Xin chào! Trợ lý AI đã sẵn sàng hỗ trợ bạn tra cứu mạch điện.")
     except Exception:
         pass
 
