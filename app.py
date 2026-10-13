@@ -7,22 +7,16 @@ import os
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
-# ---------------------------------------------------
-# THUẬT TOÁN QUÉT FILE TỰ ĐỘNG (AUTO-SCANNER)
-# ---------------------------------------------------
 assets_dir = "assets"
 uploaded_pdf_parts = []
-pdf_files_for_menu = [] # Danh sách chứa tên file để làm Menu
+pdf_files_for_menu = [] 
 
 if not os.path.exists(assets_dir):
     os.makedirs(assets_dir)
 
-# Quét toàn bộ thư mục assets, thấy file PDF là tự động lấy tên
 for filename in os.listdir(assets_dir):
     if filename.lower().endswith(".pdf"):
         pdf_files_for_menu.append(filename)
-        
-        # Đồng thời nạp luôn bản vẽ này vào đầu AI Gemini
         file_path = os.path.join(assets_dir, filename)
         try:
             g_file = client.files.upload(file=file_path)
@@ -145,7 +139,6 @@ def main(page: ft.Page):
     def load_document(title, pdf_path):
         doc_title.value = title
         if pdf_path:
-            # Nhúng trực tiếp từ file nội bộ siêu tốc độ
             doc_display_area.content = fwv.WebView(url=pdf_path, expand=True)
         try:
             chat_session.send_message(f"Sinh viên vừa mở: {title}")
@@ -161,31 +154,25 @@ def main(page: ft.Page):
         ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
     )
 
-    # ---------------------------------------------------
-    # TỰ ĐỘNG TẠO MENU TỪ THƯ MỤC
-    # ---------------------------------------------------
     menu_controls = []
     if not pdf_files_for_menu:
         menu_controls.append(ft.Text("Đang chờ tải tài liệu vào thư mục assets...", color="grey", italic=True))
     else:
         for pdf_file in sorted(pdf_files_for_menu):
-            # Cắt bỏ đuôi .pdf để làm tên hiển thị đẹp mắt
             doc_name = pdf_file.replace(".pdf", "").replace(".PDF", "")
             menu_controls.append(
                 ft.ListTile(
                     title=ft.Text(doc_name, color="#334155", weight=ft.FontWeight.BOLD), 
                     leading=ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="red400"),
-                    # Gán liên kết đường dẫn cục bộ (Local URL)
                     on_click=lambda e, f=pdf_file, n=doc_name: load_document(n, f"/{f}")
                 )
             )
 
     sidebar = ft.Container(
         width=300, bgcolor="#F8FAFC", padding=15,
-        border=ft.border.only(right=ft.border.BorderSide(1, "grey300")),
+        # Đã lược bỏ thuộc tính border.only gây lỗi tương thích
         content=ft.Column([
             ft.Text("HỆ THỐNG TRÊN XE (SYSTEM)", weight=ft.FontWeight.BOLD, color="grey700", size=13),
-            # Menu hoàn toàn tự động
             ft.ExpansionTile(
                 title=ft.Text("BẢN VẼ KỸ THUẬT PDF", weight=ft.FontWeight.BOLD, color="#1E293B"),
                 leading=ft.Icon(ft.Icons.FOLDER_SPECIAL_ROUNDED, color="orange500"),
@@ -216,5 +203,4 @@ def main(page: ft.Page):
     except: pass
 
 port = int(os.environ.get("PORT", 8080))
-# ĐIỂM CỐT LÕI: KHAI BÁO THƯ MỤC ASSETS ĐỂ HOST FILE CỤC BỘ
 ft.run(main, view=ft.AppView.WEB_BROWSER, host="0.0.0.0", port=port, assets_dir="assets")
