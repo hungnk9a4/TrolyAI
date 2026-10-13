@@ -6,7 +6,6 @@ import os
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
-# 1. TẢI TÀI LIỆU LÊN GEMINI
 doc_dir = "tai_lieu"
 uploaded_pdf_parts = []
 
@@ -20,7 +19,6 @@ if os.path.exists(doc_dir):
             except Exception as e:
                 print(f"Lỗi tải file {filename}: {e}")
 
-# 2. HƯỚNG DẪN ĐỊNH HƯỚNG AI
 system_instruction = """
 Bạn là một Chuyên gia chẩn đoán kỹ thuật ô tô cấp cao, được tích hợp trong phần mềm GDS Auto Edu.
 Nhiệm vụ của bạn là hướng dẫn sinh viên đo kiểm, chẩn đoán lỗi dựa trên bộ Cẩm nang sửa chữa.
@@ -42,9 +40,6 @@ def main(page: ft.Page):
 
     chat_session = client.chats.create(model="gemini-3.8-flash", config=config)
 
-    # ---------------------------------------------------
-    # HỆ THỐNG XỬ LÝ CHAT AI
-    # ---------------------------------------------------
     chat_list = ft.ListView(expand=True, auto_scroll=True, spacing=15)
 
     def add_message(sender: str, text: str):
@@ -153,24 +148,8 @@ def main(page: ft.Page):
         on_click=lambda e: toggle_chat(not chat_window.visible)
     )
 
-    # ---------------------------------------------------
-    # KHU VỰC HIỂN THỊ CHÍNH (WORKSPACE)
-    # ---------------------------------------------------
     doc_title = ft.Text("Trang chủ", size=22, weight=ft.FontWeight.BOLD, color="#1E293B")
     
-    pdf_btn = ft.Container(
-        content=ft.Row([
-            ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="white"),
-            ft.Text("Mở bản vẽ PDF (Phóng to/Thu nhỏ nét chuẩn)", color="white", weight=ft.FontWeight.BOLD)
-        ], alignment=ft.MainAxisAlignment.CENTER),
-        bgcolor="red600",
-        padding=15,
-        border_radius=8,
-        width=400,
-        visible=False,
-        on_click=lambda e: page.launch_url(pdf_btn.data) if pdf_btn.data else None
-    )
-
     doc_display_area = ft.Container(
         expand=True,
         bgcolor="white",
@@ -186,15 +165,18 @@ def main(page: ft.Page):
     def load_document(title, pdf_url):
         doc_title.value = title
         if pdf_url:
-            pdf_btn.data = pdf_url
-            pdf_btn.visible = True
             doc_display_area.content = ft.Column([
                 ft.Icon(ft.Icons.ACCOUNT_TREE_ROUNDED, size=60, color="blueGrey200"),
                 ft.Text(title, weight=ft.FontWeight.BOLD, size=18, color="blueGrey700"),
                 ft.Container(height=20),
-                pdf_btn,
+                # Giải pháp siêu liên kết thuần túy - miễn nhiễm lỗi phiên bản
+                ft.Markdown(
+                    f"[**👉 BẤM VÀO ĐÂY ĐỂ MỞ BẢN VẼ PDF TRÊN GOOGLE DRIVE 👈**]({pdf_url})", 
+                    selectable=True, 
+                    extension_set=ft.MarkdownExtensionSet.GITHUB_WEB
+                ),
                 ft.Container(height=10),
-                ft.Text("Mẹo: Nhấn nút trên để mở bản vẽ PDF. Bạn có thể zoom để xem chi tiết từng đường dây.", italic=True, color="grey")
+                ft.Text("Mẹo: Mở liên kết trên để xem bản vẽ rõ nét và có thể thu phóng tự do.", italic=True, color="grey")
             ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
         
         try:
@@ -203,13 +185,9 @@ def main(page: ft.Page):
             pass
         page.update()
 
-    # ---------------------------------------------------
-    # THANH TOP BAR (Phong cách ALLDATA)
-    # ---------------------------------------------------
     top_bar = ft.Container(
         bgcolor="#0F172A",
         height=60,
-        # Đã thay thế padding hàm số bằng số nguyên thuần túy
         padding=15,
         content=ft.Row([
             ft.Row([
@@ -236,13 +214,9 @@ def main(page: ft.Page):
         ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
     )
 
-    # ---------------------------------------------------
-    # THANH ĐIỀU HƯỚNG BÊN TRÁI (SIDEBAR)
-    # ---------------------------------------------------
     sidebar = ft.Container(
         width=300,
         bgcolor="#F8FAFC", 
-        # Đã loại bỏ hoàn toàn thuộc tính border phức tạp, chỉ giữ lại padding số nguyên
         padding=15,
         content=ft.Column([
             ft.Text("HỆ THỐNG TRÊN XE (SYSTEM)", weight=ft.FontWeight.BOLD, color="grey700", size=13),
