@@ -158,7 +158,6 @@ def main(page: ft.Page):
     # ---------------------------------------------------
     doc_title = ft.Text("Trang chủ", size=22, weight=ft.FontWeight.BOLD, color="#1E293B")
     
-    # Đã thay thế ElevatedButton bằng Container tự chế an toàn tuyệt đối
     pdf_btn = ft.Container(
         content=ft.Row([
             ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="white"),
@@ -210,7 +209,8 @@ def main(page: ft.Page):
     top_bar = ft.Container(
         bgcolor="#0F172A",
         height=60,
-        padding=ft.padding.symmetric(horizontal=20),
+        # ĐÃ THAY THẾ padding.symmetric BẰNG padding.only
+        padding=ft.padding.only(left=20, right=20),
         content=ft.Row([
             ft.Row([
                 ft.Icon(ft.Icons.DIRECTIONS_CAR, color="orange500", size=30),
@@ -251,7 +251,6 @@ def main(page: ft.Page):
                 title=ft.Text("BRAKE (Hệ thống phanh)", weight=ft.FontWeight.BOLD, color="#1E293B"),
                 leading=ft.Icon(ft.Icons.SPEED_ROUNDED, color="red500"),
                 controls=[
-                    # Tích hợp Dữ liệu Google Drive thật của Thầy Hưng
                     ft.ListTile(
                         title=ft.Text("Sơ đồ TRC-H-F", color="#334155"), 
                         leading=ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="red400"),
