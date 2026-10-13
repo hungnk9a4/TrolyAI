@@ -119,12 +119,12 @@ def main(page: ft.Page):
             ]),
             ft.Divider(color="grey300"),
             
-            # Khu vực hiển thị bản vẽ / Hình ảnh (Đã gỡ bỏ alignment)
+            # Khu vực hiển thị bản vẽ / Hình ảnh (Đã dùng fit="contain" an toàn)
             ft.Container(
                 expand=True,
                 bgcolor="white",
                 border_radius=10,
-                content=ft.Image(src="https://i.imgur.com/39hNq1b.jpeg", fit=ft.ImageFit.CONTAIN) 
+                content=ft.Image(src="https://i.imgur.com/39hNq1b.jpeg", fit="contain") 
             )
         ])
     )
