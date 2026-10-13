@@ -1,4 +1,5 @@
 import flet as ft
+import flet_webview as fwv  # Kéo thư viện WebView độc lập vào
 from google import genai
 from google.genai import types
 import os
@@ -150,12 +151,10 @@ def main(page: ft.Page):
 
     doc_title = ft.Text("Trang chủ", size=22, weight=ft.FontWeight.BOLD, color="#1E293B")
     
-    # Khu vực hiển thị trung tâm mặc định (chưa mở PDF)
     doc_display_area = ft.Container(
         expand=True,
         bgcolor="white",
         border_radius=10,
-        # Đã bỏ padding để khi mở PDF sẽ tràn viền đẹp mắt
         content=ft.Column([
             ft.Icon(ft.Icons.DIRECTIONS_CAR_ROUNDED, size=80, color="blueGrey200"),
             ft.Text("HỆ THỐNG TRA CỨU ALLDATA EDU", weight=ft.FontWeight.BOLD, color="blueGrey400", size=24),
@@ -166,8 +165,8 @@ def main(page: ft.Page):
     def load_document(title, pdf_url):
         doc_title.value = title
         if pdf_url:
-            # SỬ DỤNG WEBVIEW ĐỂ NHÚNG TRỰC TIẾP TRÌNH ĐỌC PDF VÀO GIAO DIỆN
-            doc_display_area.content = ft.WebView(
+            # SỬ DỤNG THƯ VIỆN CHUYÊN DỤNG ĐỂ NHÚNG PDF TRỰC TIẾP
+            doc_display_area.content = fwv.WebView(
                 url=pdf_url,
                 expand=True
             )
