@@ -118,9 +118,6 @@ def main(page: ft.Page):
     )
     send_btn = ft.IconButton(icon=ft.Icons.SEND_ROUNDED, icon_color="blueAccent700", on_click=send_msg)
 
-    # ---------------------------------------------------
-    # 1. CỬA SỔ AI CHAT (NỔI LƠ LỬNG)
-    # ---------------------------------------------------
     chat_window = ft.Container(
         visible=False, 
         width=380,
@@ -134,13 +131,13 @@ def main(page: ft.Page):
         content=ft.Column([
             ft.Row([
                 ft.CircleAvatar(content=ft.Icon(ft.Icons.SMART_TOY_ROUNDED, color="white"), bgcolor="orange500", radius=16),
-                ft.Text("Trợ lý AI - Vios 2019", weight=ft.FontWeight.BOLD, color="blueAccent700", size=16),
+                ft.Text("Trợ lý AI - Vios", weight=ft.FontWeight.BOLD, color="blueAccent700", size=16),
                 ft.Container(expand=True),
                 ft.IconButton(ft.Icons.CLOSE_ROUNDED, on_click=lambda e: toggle_chat(False))
             ]),
             ft.Divider(color="grey300"),
-            chat_list,  # Đưa danh sách tin nhắn vào đây
-            ft.Row([chat_input, send_btn]) # Đưa ô nhập liệu vào đây
+            chat_list,  
+            ft.Row([chat_input, send_btn]) 
         ])
     )
 
@@ -157,7 +154,53 @@ def main(page: ft.Page):
     )
 
     # ---------------------------------------------------
-    # 2. THANH ĐIỀU HƯỚNG BÊN TRÁI (SIDEBAR)
+    # KHU VỰC HIỂN THỊ CHÍNH (BIẾN ĐỘNG)
+    # ---------------------------------------------------
+    # Tiêu đề mặc định
+    doc_title = ft.Text("Trang chủ - Xin mời chọn tài liệu", size=22, weight=ft.FontWeight.BOLD, color="blueGrey900")
+    
+    # Màn hình chào mừng mặc định
+    welcome_view = ft.Column([
+        ft.Icon(ft.Icons.DIRECTIONS_CAR_ROUNDED, size=80, color="blueGrey200"),
+        ft.Text("GDS AUTO EDU", weight=ft.FontWeight.BOLD, color="blueGrey400", size=24),
+        ft.Text("Hãy chọn dòng xe và tài liệu từ menu bên trái", color="blueGrey300")
+    ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+
+    # Biến chứa hình ảnh (ẩn lúc đầu)
+    doc_image = ft.Image(src="", fit="contain", visible=False, expand=True)
+
+    # Container trung tâm chứa nội dung
+    doc_display_area = ft.Container(
+        expand=True,
+        bgcolor="white",
+        border_radius=10,
+        content=welcome_view,
+        alignment=ft.alignment.center
+    )
+
+    # ---------------------------------------------------
+    # HÀM ĐỔI NỘI DUNG KHI CLICK MENU
+    # ---------------------------------------------------
+    def load_document(title, image_url):
+        doc_title.value = title
+        if image_url:
+            doc_image.src = image_url
+            doc_image.visible = True
+            doc_display_area.content = doc_image
+        else:
+            doc_image.visible = False
+            doc_display_area.content = ft.Text("Dữ liệu đang được cập nhật...", color="grey")
+        
+        # Tự động gửi thông báo ngầm cho AI biết sinh viên đang xem gì
+        try:
+            chat_session.send_message(f"Sinh viên vừa mở tài liệu: {title}. Hãy chuẩn bị sẵn sàng trả lời nếu họ hỏi.")
+        except:
+            pass
+
+        page.update()
+
+    # ---------------------------------------------------
+    # THANH ĐIỀU HƯỚNG BÊN TRÁI (SIDEBAR)
     # ---------------------------------------------------
     sidebar = ft.Container(
         width=280,
@@ -176,9 +219,22 @@ def main(page: ft.Page):
                     ft.ExpansionTile(
                         title=ft.Text("Vios (2019-2020)", color="white70"),
                         controls=[
-                            ft.ListTile(title=ft.Text("Sơ đồ mạch điện A/C", color="blue400"), leading=ft.Icon(ft.Icons.ACCOUNT_TREE_ROUNDED, color="blue400")),
-                            ft.ListTile(title=ft.Text("Vị trí giắc cắm", color="white54"), leading=ft.Icon(ft.Icons.LOCATION_ON_ROUNDED, color="white54")),
-                            ft.ListTile(title=ft.Text("Lực siết ốc", color="white54"), leading=ft.Icon(ft.Icons.BUILD_ROUNDED, color="white54")),
+                            # GẮN SỰ KIỆN CLICK VÀO ĐÂY VỚI LINK ẢNH GIẢ LẬP
+                            ft.ListTile(
+                                title=ft.Text("Sơ đồ mạch điện A/C", color="white"), 
+                                leading=ft.Icon(ft.Icons.ACCOUNT_TREE_ROUNDED, color="blue400"),
+                                on_click=lambda e: load_document("Sơ đồ mạch điện A/C - Toyota Vios 2019", "https://placehold.co/1000x700/E2E8F0/1E293B?text=SO+DO+MACH+DIEN+DIEU+HOA+VIOS")
+                            ),
+                            ft.ListTile(
+                                title=ft.Text("Vị trí giắc cắm hộp A/C", color="white"), 
+                                leading=ft.Icon(ft.Icons.LOCATION_ON_ROUNDED, color="blue400"),
+                                on_click=lambda e: load_document("Vị trí giắc cắm hộp điều khiển A/C - Toyota Vios 2019", "https://placehold.co/1000x700/E2E8F0/1E293B?text=VI+TRI+GIAC+CAM+TREN+XE")
+                            ),
+                            ft.ListTile(
+                                title=ft.Text("Lực siết ốc lốc lạnh", color="white"), 
+                                leading=ft.Icon(ft.Icons.BUILD_ROUNDED, color="blue400"),
+                                on_click=lambda e: load_document("Bảng lực siết ốc hệ thống A/C - Toyota Vios 2019", "https://placehold.co/1000x700/E2E8F0/1E293B?text=BANG+LUC+SIET+OC+TIEU+CHUAN")
+                            ),
                         ]
                     )
                 ]
@@ -187,7 +243,7 @@ def main(page: ft.Page):
     )
 
     # ---------------------------------------------------
-    # 3. KHÔNG GIAN LÀM VIỆC CHÍNH (Đã thay bằng Khung Placeholder)
+    # KHÔNG GIAN LÀM VIỆC CHÍNH
     # ---------------------------------------------------
     main_workspace = ft.Container(
         expand=True,
@@ -196,20 +252,10 @@ def main(page: ft.Page):
         content=ft.Column([
             ft.Row([
                 ft.Icon(ft.Icons.ACCOUNT_TREE_ROUNDED, color="blueGrey700"),
-                ft.Text("Sơ đồ mạch điện hệ thống điều hòa (A/C) - Toyota Vios 2019", size=22, weight=ft.FontWeight.BOLD, color="blueGrey900")
+                doc_title # Tiêu đề tự động thay đổi
             ]),
             ft.Divider(color="grey300"),
-            
-            ft.Container(
-                expand=True,
-                bgcolor="white",
-                border_radius=10,
-                content=ft.Column([
-                    ft.Icon(ft.Icons.IMAGE_SEARCH_ROUNDED, size=80, color="grey300"),
-                    ft.Text("KHU VỰC HIỂN THỊ TÀI LIỆU KỸ THUẬT", weight=ft.FontWeight.BOLD, color="grey500", size=20),
-                    ft.Text("Đang chờ kết nối cơ sở dữ liệu...", color="grey400")
-                ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
-            )
+            doc_display_area # Nội dung tự động thay đổi
         ])
     )
 
@@ -222,7 +268,6 @@ def main(page: ft.Page):
         )
     )
 
-    # KHỞI ĐỘNG AI NGẦM (Giống code cũ)
     try:
         if uploaded_pdf_parts:
             initial_prompt = ["Đọc các Cẩm nang sau. Chào sinh viên ngắn gọn và chờ câu hỏi."] + uploaded_pdf_parts
@@ -230,8 +275,8 @@ def main(page: ft.Page):
         else:
             response = chat_session.send_message("Hãy gửi một lời chào ngắn gọn tới sinh viên và yêu cầu câu hỏi.")
         add_message("AI", response.text)
-    except Exception as ex:
-        add_message("AI", "Xin chào! Trợ lý đã sẵn sàng.")
+    except Exception:
+        pass
 
 port = int(os.environ.get("PORT", 8080))
 ft.run(main, view=ft.AppView.WEB_BROWSER, host="0.0.0.0", port=port)
