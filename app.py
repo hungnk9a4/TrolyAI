@@ -158,12 +158,16 @@ def main(page: ft.Page):
     # ---------------------------------------------------
     doc_title = ft.Text("Trang chủ", size=22, weight=ft.FontWeight.BOLD, color="#1E293B")
     
-    # Nút bấm mở PDF
-    pdf_btn = ft.ElevatedButton(
-        text="Mở bản vẽ PDF (Phóng to/Thu nhỏ nét chuẩn)", 
-        icon=ft.Icons.PICTURE_AS_PDF_ROUNDED,
+    # Đã thay thế ElevatedButton bằng Container tự chế an toàn tuyệt đối
+    pdf_btn = ft.Container(
+        content=ft.Row([
+            ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="white"),
+            ft.Text("Mở bản vẽ PDF (Phóng to/Thu nhỏ nét chuẩn)", color="white", weight=ft.FontWeight.BOLD)
+        ], alignment=ft.MainAxisAlignment.CENTER),
         bgcolor="red600",
-        color="white",
+        padding=15,
+        border_radius=8,
+        width=400,
         visible=False,
         on_click=lambda e: page.launch_url(pdf_btn.data) if pdf_btn.data else None
     )
@@ -191,7 +195,7 @@ def main(page: ft.Page):
                 ft.Container(height=20),
                 pdf_btn,
                 ft.Container(height=10),
-                ft.Text("Mẹo: Nhấn nút trên để mở bản vẽ PDF từ Google Drive. Bạn có thể zoom để xem chi tiết từng đường dây.", italic=True, color="grey")
+                ft.Text("Mẹo: Nhấn nút trên để mở bản vẽ PDF. Bạn có thể zoom để xem chi tiết từng đường dây.", italic=True, color="grey")
             ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
         
         try:
