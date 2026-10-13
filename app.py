@@ -156,26 +156,22 @@ def main(page: ft.Page):
     # ---------------------------------------------------
     # KHU VỰC HIỂN THỊ CHÍNH (BIẾN ĐỘNG)
     # ---------------------------------------------------
-    # Tiêu đề mặc định
     doc_title = ft.Text("Trang chủ - Xin mời chọn tài liệu", size=22, weight=ft.FontWeight.BOLD, color="blueGrey900")
     
-    # Màn hình chào mừng mặc định
     welcome_view = ft.Column([
         ft.Icon(ft.Icons.DIRECTIONS_CAR_ROUNDED, size=80, color="blueGrey200"),
         ft.Text("GDS AUTO EDU", weight=ft.FontWeight.BOLD, color="blueGrey400", size=24),
         ft.Text("Hãy chọn dòng xe và tài liệu từ menu bên trái", color="blueGrey300")
     ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
-    # Biến chứa hình ảnh (ẩn lúc đầu)
     doc_image = ft.Image(src="", fit="contain", visible=False, expand=True)
 
-    # Container trung tâm chứa nội dung
+    # Đã xóa dòng gây lỗi alignment=ft.alignment.center ở đây
     doc_display_area = ft.Container(
         expand=True,
         bgcolor="white",
         border_radius=10,
-        content=welcome_view,
-        alignment=ft.alignment.center
+        content=welcome_view
     )
 
     # ---------------------------------------------------
@@ -191,7 +187,6 @@ def main(page: ft.Page):
             doc_image.visible = False
             doc_display_area.content = ft.Text("Dữ liệu đang được cập nhật...", color="grey")
         
-        # Tự động gửi thông báo ngầm cho AI biết sinh viên đang xem gì
         try:
             chat_session.send_message(f"Sinh viên vừa mở tài liệu: {title}. Hãy chuẩn bị sẵn sàng trả lời nếu họ hỏi.")
         except:
@@ -219,7 +214,6 @@ def main(page: ft.Page):
                     ft.ExpansionTile(
                         title=ft.Text("Vios (2019-2020)", color="white70"),
                         controls=[
-                            # GẮN SỰ KIỆN CLICK VÀO ĐÂY VỚI LINK ẢNH GIẢ LẬP
                             ft.ListTile(
                                 title=ft.Text("Sơ đồ mạch điện A/C", color="white"), 
                                 leading=ft.Icon(ft.Icons.ACCOUNT_TREE_ROUNDED, color="blue400"),
@@ -252,10 +246,10 @@ def main(page: ft.Page):
         content=ft.Column([
             ft.Row([
                 ft.Icon(ft.Icons.ACCOUNT_TREE_ROUNDED, color="blueGrey700"),
-                doc_title # Tiêu đề tự động thay đổi
+                doc_title
             ]),
             ft.Divider(color="grey300"),
-            doc_display_area # Nội dung tự động thay đổi
+            doc_display_area 
         ])
     )
 
