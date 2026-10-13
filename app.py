@@ -209,8 +209,8 @@ def main(page: ft.Page):
     top_bar = ft.Container(
         bgcolor="#0F172A",
         height=60,
-        # ĐÃ THAY THẾ padding.symmetric BẰNG padding.only
-        padding=ft.padding.only(left=20, right=20),
+        # Đã thay thế padding hàm số bằng số nguyên thuần túy
+        padding=15,
         content=ft.Row([
             ft.Row([
                 ft.Icon(ft.Icons.DIRECTIONS_CAR, color="orange500", size=30),
@@ -242,8 +242,8 @@ def main(page: ft.Page):
     sidebar = ft.Container(
         width=300,
         bgcolor="#F8FAFC", 
-        padding=10,
-        border=ft.border.only(right=ft.border.BorderSide(1, "grey300")),
+        # Đã loại bỏ hoàn toàn thuộc tính border phức tạp, chỉ giữ lại padding số nguyên
+        padding=15,
         content=ft.Column([
             ft.Text("HỆ THỐNG TRÊN XE (SYSTEM)", weight=ft.FontWeight.BOLD, color="grey700", size=13),
             
