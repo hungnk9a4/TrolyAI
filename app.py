@@ -2,23 +2,44 @@ import flet as ft
 from google import genai
 from google.genai import types
 import os
+import fitz  # PyMuPDF - Chuyển đổi PDF thành ảnh sắc nét tốc độ cao
 
 api_key = os.environ.get("GEMINI_API_KEY")
-client = genai.Client(api_key=api_key)
+client = genai.Client(api_key=api_key) if api_key else None
 
 # ---------------------------------------------------
-# QUÉT THƯ MỤC ASSETS ĐỂ LẤY FILE PDF
+# QUÉT VÀ TỰ ĐỘNG CHUYỂN ĐỔI PDF THÀNH ẢNH
 # ---------------------------------------------------
 assets_dir = "assets"
-uploaded_pdf_parts = []
-pdf_files_for_menu = [] 
-
 if not os.path.exists(assets_dir):
     os.makedirs(assets_dir)
 
+def convert_pdf_to_images(pdf_filename):
+    """Chuyển các trang của file PDF thành danh sách ảnh PNG sắc nét"""
+    pdf_path = os.path.join(assets_dir, pdf_filename)
+    base_name = os.path.splitext(pdf_filename)[0]
+    img_files = []
+    try:
+        doc = fitz.open(pdf_path)
+        for i, page in enumerate(doc):
+            img_name = f"{base_name}_page_{i+1}.png"
+            img_path = os.path.join(assets_dir, img_name)
+            # Chỉ xuất ảnh nếu chưa tồn tại để tối ưu tốc độ
+            if not os.path.exists(img_path):
+                pix = page.get_pixmap(dpi=150)  # 150 DPI tra cứu rất nét
+                pix.save(img_path)
+            img_files.append(img_name)
+    except Exception as ex:
+        print(f"Lỗi chuyển đổi PDF {pdf_filename}: {ex}")
+    return img_files
+
+# Quét tất cả file PDF có trong thư mục assets
+pdf_files_for_menu = []
 for filename in os.listdir(assets_dir):
     if filename.lower().endswith(".pdf"):
         pdf_files_for_menu.append(filename)
+        # Chuyển đổi sẵn ngay khi khởi động app
+        convert_pdf_to_images(filename)
 
 system_instruction = """
 Bạn là một Chuyên gia chẩn đoán kỹ thuật ô tô cấp cao, được tích hợp trong phần mềm GDS Auto Edu.
@@ -37,7 +58,7 @@ def main(page: ft.Page):
     page.window_width = 1200
     page.window_height = 800
 
-    chat_session = client.chats.create(model="gemini-3.8-flash", config=config)
+    chat_session = client.chats.create(model="gemini-3.8-flash", config=config) if client else None
     chat_list = ft.ListView(expand=True, auto_scroll=True, spacing=15)
 
     def add_message(sender: str, text: str):
@@ -66,7 +87,7 @@ def main(page: ft.Page):
         page.update()
 
     def send_msg(e=None):
-        if not chat_input.value: return
+        if not chat_input.value or not chat_session: return
         user_text = chat_input.value
         add_message("Bạn", user_text)
         chat_input.value = "" 
@@ -133,18 +154,24 @@ def main(page: ft.Page):
     )
 
     # ---------------------------------------------------
-    # HÀM MỞ FILE CHẠY TRỰC TIẾP TỐC ĐỘ CAO
+    # HÀM MỞ FILE DẠNG HÌNH ẢNH SIÊU TỐC
     # ---------------------------------------------------
     def load_document(title, pdf_file):
         doc_title.value = title
-        if pdf_file:
-            # Nhúng PDF trực tiếp qua thẻ embed HTML tiêu chuẩn của trình duyệt
-            embed_code = f'<embed src="/{pdf_file}" type="application/pdf" width="100%" height="700px" />'
-            doc_display_area.content = ft.Markdown(
-                embed_code,
-                extension_set=ft.MarkdownExtensionSet.GITHUB_WEB
+        img_files = convert_pdf_to_images(pdf_file)
+        if img_files:
+            # Tạo danh sách các trang ảnh xếp dọc
+            image_controls = [
+                ft.Image(src=f"/{img}", fit="contain") for img in img_files
+            ]
+            doc_display_area.content = ft.ListView(
+                controls=image_controls,
+                expand=True,
+                spacing=15
             )
-        # Cập nhật UI ngay lập tức không qua trung gian AI
+        else:
+            doc_display_area.content = ft.Text("Không thể tải tài liệu này.", color="red")
+            
         page.update()
 
     top_bar = ft.Container(
@@ -178,7 +205,7 @@ def main(page: ft.Page):
         content=ft.Column([
             ft.Text("HỆ THỐNG TRÊN XE (SYSTEM)", weight=ft.FontWeight.BOLD, color="grey700", size=13),
             ft.ExpansionTile(
-                title=ft.Text("BẢN VẼ KỸ THUẬT PDF", weight=ft.FontWeight.BOLD, color="#1E293B"),
+                title=ft.Text("BẢN VẼ KỸ THUẬT", weight=ft.FontWeight.BOLD, color="#1E293B"),
                 leading=ft.Icon(ft.Icons.FOLDER_SPECIAL_ROUNDED, color="orange500"),
                 controls=menu_controls
             )
