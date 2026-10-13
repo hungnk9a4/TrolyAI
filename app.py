@@ -150,11 +150,12 @@ def main(page: ft.Page):
 
     doc_title = ft.Text("Trang chủ", size=22, weight=ft.FontWeight.BOLD, color="#1E293B")
     
+    # Khu vực hiển thị trung tâm mặc định (chưa mở PDF)
     doc_display_area = ft.Container(
         expand=True,
         bgcolor="white",
         border_radius=10,
-        padding=30,
+        # Đã bỏ padding để khi mở PDF sẽ tràn viền đẹp mắt
         content=ft.Column([
             ft.Icon(ft.Icons.DIRECTIONS_CAR_ROUNDED, size=80, color="blueGrey200"),
             ft.Text("HỆ THỐNG TRA CỨU ALLDATA EDU", weight=ft.FontWeight.BOLD, color="blueGrey400", size=24),
@@ -165,19 +166,11 @@ def main(page: ft.Page):
     def load_document(title, pdf_url):
         doc_title.value = title
         if pdf_url:
-            doc_display_area.content = ft.Column([
-                ft.Icon(ft.Icons.ACCOUNT_TREE_ROUNDED, size=60, color="blueGrey200"),
-                ft.Text(title, weight=ft.FontWeight.BOLD, size=18, color="blueGrey700"),
-                ft.Container(height=20),
-                # Giải pháp siêu liên kết thuần túy - miễn nhiễm lỗi phiên bản
-                ft.Markdown(
-                    f"[**👉 BẤM VÀO ĐÂY ĐỂ MỞ BẢN VẼ PDF TRÊN GOOGLE DRIVE 👈**]({pdf_url})", 
-                    selectable=True, 
-                    extension_set=ft.MarkdownExtensionSet.GITHUB_WEB
-                ),
-                ft.Container(height=10),
-                ft.Text("Mẹo: Mở liên kết trên để xem bản vẽ rõ nét và có thể thu phóng tự do.", italic=True, color="grey")
-            ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+            # SỬ DỤNG WEBVIEW ĐỂ NHÚNG TRỰC TIẾP TRÌNH ĐỌC PDF VÀO GIAO DIỆN
+            doc_display_area.content = ft.WebView(
+                url=pdf_url,
+                expand=True
+            )
         
         try:
             chat_session.send_message(f"Sinh viên vừa mở tài liệu: {title}.")
