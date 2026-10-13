@@ -12,12 +12,19 @@ if not os.path.exists(assets_dir):
     os.makedirs(assets_dir)
 
 # ---------------------------------------------------
-# 1. CHUYỂN ĐỔI PDF THÀNH ẢNH SẮC NÉT TỰ ĐỘNG
+# 1. CHUYỂN ĐỔI PDF THÀNH ẢNH (ĐÃ CHUẨN HÓA ĐƯỜNG DẪN)
 # ---------------------------------------------------
 def convert_pdf_to_images(rel_pdf_path):
-    full_pdf_path = os.path.join(assets_dir, rel_pdf_path)
-    # Tạo tên ảnh duy nhất tránh trùng lặp giữa các thư mục
-    clean_prefix = rel_pdf_path.replace(os.sep, "_").replace("/", "_").replace("\\", "_")
+    # Chuẩn hóa đường dẫn cho phù hợp với hệ điều hành Linux/Windows
+    norm_rel_path = os.path.normpath(rel_pdf_path)
+    full_pdf_path = os.path.join(assets_dir, norm_rel_path)
+    
+    if not os.path.exists(full_pdf_path):
+        print(f"Không tìm thấy file: {full_pdf_path}")
+        return []
+
+    # Tạo tên ảnh duy nhất
+    clean_prefix = norm_rel_path.replace(os.sep, "_").replace("/", "_").replace("\\", "_")
     clean_prefix = os.path.splitext(clean_prefix)[0]
     
     img_files = []
@@ -29,9 +36,12 @@ def convert_pdf_to_images(rel_pdf_path):
             if not os.path.exists(img_path):
                 pix = page.get_pixmap(dpi=150)
                 pix.save(img_path)
-            img_files.append(img_name)
+            
+            # Đường dẫn phục vụ hiển thị web (luôn dùng dấu /)
+            web_img_path = img_name
+            img_files.append(web_img_path)
     except Exception as ex:
-        print(f"Lỗi chuyển đổi PDF {rel_pdf_path}: {ex}")
+        print(f"Lỗi chuyển đổi PDF {full_pdf_path}: {ex}")
     return img_files
 
 # ---------------------------------------------------
@@ -171,18 +181,24 @@ def main(page: ft.Page):
         ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
     )
 
+    # ---------------------------------------------------
+    # HÀM MỞ FILE VỚI GIAO DIỆN MỞ RỘNG TOÀN MÀN HÌNH
+    # ---------------------------------------------------
     def load_document(title, rel_pdf_path):
         doc_title.value = title
         img_files = convert_pdf_to_images(rel_pdf_path)
         if img_files:
-            image_controls = [ft.Image(src=f"/{img}", fit="contain") for img in img_files]
+            image_controls = [ft.Image(src=f"/{img}", fit="contain", expand=True) for img in img_files]
             doc_display_area.content = ft.ListView(
                 controls=image_controls,
                 expand=True,
                 spacing=15
             )
         else:
-            doc_display_area.content = ft.Text("Không thể tải tài liệu này.", color="red")
+            doc_display_area.content = ft.Column([
+                ft.Icon(ft.Icons.ERROR_OUTLINE_ROUNDED, color="red400", size=50),
+                ft.Text("Không thể tải tài liệu này. Hãy kiểm tra tên file PDF trong thư mục assets.", color="red400", weight=ft.FontWeight.BOLD)
+            ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
         page.update()
 
     top_bar = ft.Container(
@@ -207,12 +223,14 @@ def main(page: ft.Page):
             sub_folders = {k: v for k, v in value.items() if k != "__files__"}
             
             sub_controls = []
+            new_path = os.path.join(current_path, key) if current_path else key
+            
             if sub_folders:
-                sub_controls.extend(create_menu_nodes(sub_folders, os.path.join(current_path, key) if current_path else key))
+                sub_controls.extend(create_menu_nodes(sub_folders, new_path))
             
             for f in sorted(files):
                 doc_name = os.path.splitext(f)[0]
-                full_rel_path = os.path.join(current_path, key, f) if current_path else os.path.join(key, f)
+                full_rel_path = os.path.join(new_path, f)
                 sub_controls.append(
                     ft.ListTile(
                         title=ft.Text(doc_name, color="#334155", weight=ft.FontWeight.BOLD),
