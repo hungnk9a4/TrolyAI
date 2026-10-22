@@ -342,4 +342,65 @@ def main(page: ft.Page):
             controls.append(
                 ft.ExpansionTile(
                     dense=True,
-                    title=ft.Text(key, weight=ft.FontWeight.BOLD if
+                    title=ft.Text(key, weight=ft.FontWeight.BOLD if level < 2 else ft.FontWeight.W_500, size=current_size, color="#0F172A"),
+                    leading=ft.Row([ft.Container(width=folder_indent) if folder_indent > 0 else ft.Container(width=0), ft.Icon(folder_icon, color=current_color, size=16)], spacing=2, tight=True),
+                    controls=sub_controls
+                )
+            )
+        return controls
+
+    file_tree = build_file_tree(assets_dir)
+    sidebar_column = ft.Column(scroll=ft.ScrollMode.AUTO, expand=True)
+
+    def update_search(e_or_value):
+        query = e_or_value.control.value.lower().strip() if hasattr(e_or_value, 'control') else e_or_value.lower().strip()
+        filtered_controls = create_menu_nodes(file_tree, search_term=query)
+        if not filtered_controls: filtered_controls = [ft.Text("Không tìm thấy dữ liệu...", color="red400", italic=True)]
+        sidebar_column.controls = filtered_controls
+        sidebar_column.update()
+
+    sidebar_column.controls = create_menu_nodes(file_tree)
+    if not sidebar_column.controls: sidebar_column.controls = [ft.Text("Đang chờ tạo thư mục xe trong assets...", color="grey", italic=True)]
+
+    search_input = ft.TextField(
+        hint_text="Tìm kiếm hệ thống, xe...", bgcolor="#1E293B", border_color="transparent", color="white", 
+        border_radius=5, content_padding=10, prefix_icon=ft.Icons.SEARCH, on_change=update_search
+    )
+
+    top_bar = ft.Container(
+        bgcolor="#0F172A", height=60, padding=15,
+        content=ft.Row([
+            ft.Row([ft.Icon(ft.Icons.DIRECTIONS_CAR, color="orange500", size=30), ft.Text("GDS AUTO EDU", color="white", weight=ft.FontWeight.BOLD, size=20)]),
+            ft.Container(content=search_input, width=400),
+            ft.Row([
+                ft.IconButton(icon=ft.Icons.DOCUMENT_SCANNER_ROUNDED, icon_color="orange500", tooltip="Tra cứu VIN", on_click=open_vin_dialog),
+                ft.Container(width=5),
+                ft.CircleAvatar(content=ft.Icon(ft.Icons.PERSON, color="white"), bgcolor="grey700")
+            ])
+        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+    )
+
+    sidebar = ft.Container(
+        width=330, bgcolor="#F8FAFC", padding=10,
+        content=ft.Column([
+            ft.Text("DANH MỤC HÃNG XE & HỆ THỐNG", weight=ft.FontWeight.BOLD, color="grey700", size=12),
+            sidebar_column
+        ])
+    )
+
+    main_workspace = ft.Container(
+        expand=True, bgcolor="#E2E8F0", padding=20,
+        content=ft.Column([
+            ft.Row([ft.Icon(ft.Icons.FOLDER_OPEN_ROUNDED, color="blueGrey700"), doc_title]),
+            ft.Divider(color="grey400"),
+            doc_display_area 
+        ])
+    )
+
+    body_layout = ft.Row([sidebar, main_workspace], expand=True, spacing=0)
+    main_layout = ft.Column([top_bar, body_layout], expand=True, spacing=0)
+    
+    page.add(ft.Stack(controls=[main_layout, chat_window, vin_modal, fab], expand=True))
+
+port = int(os.environ.get("PORT", 8080))
+ft.run(main, view=ft.AppView.WEB_BROWSER, host="0.0.0.0", port=port, assets_dir="assets")
