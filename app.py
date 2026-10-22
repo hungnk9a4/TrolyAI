@@ -175,6 +175,7 @@ def main(page: ft.Page):
     fab = ft.FloatingActionButton(icon=ft.Icons.FORUM_ROUNDED, bgcolor="orange500", right=20, bottom=20, on_click=lambda e: toggle_chat(not chat_window.visible))
     
     doc_title = ft.Text("Trang chủ", size=22, weight=ft.FontWeight.BOLD, color="#1E293B")
+    
     doc_display_area = ft.Container(
         expand=True, bgcolor="white", border_radius=10,
         content=ft.Column([
@@ -184,14 +185,66 @@ def main(page: ft.Page):
         ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
     )
 
+    # ---------------------------------------------------
+    # 4. HỆ THỐNG ZOOM VÀ CUỘN 2 CHIỀU (2D PANNING)
+    # ---------------------------------------------------
     def load_document(title, rel_pdf_path):
         doc_title.value = title
         img_files = convert_pdf_to_images(rel_pdf_path)
+        
         if img_files:
-            image_controls = [ft.Image(src=f"/{img}", fit="contain", expand=True) for img in img_files]
-            doc_display_area.content = ft.ListView(controls=image_controls, expand=True, spacing=15)
+            # Biến lưu trữ độ thu phóng hiện tại (Mặc định 1000px width)
+            zoom_level = [1000] 
+            
+            # Cột chứa hình ảnh, cho phép cuộn dọc
+            img_column = ft.Column(scroll=ft.ScrollMode.AUTO, spacing=15)
+            
+            def update_images():
+                # Tạo lại danh sách ảnh với chiều rộng mới
+                img_column.controls = [
+                    ft.Image(src=f"/{img}", width=zoom_level[0], fit=ft.ImageFit.FIT_WIDTH) 
+                    for img in img_files
+                ]
+                page.update()
+
+            def zoom_in(e):
+                zoom_level[0] += 300 # Phóng to thêm 300px
+                update_images()
+                
+            def zoom_out(e):
+                if zoom_level[0] > 500: # Không cho thu nhỏ quá mức
+                    zoom_level[0] -= 300
+                update_images()
+                
+            def reset_zoom(e):
+                zoom_level[0] = 1000 # Trả về mặc định
+                update_images()
+
+            update_images() # Khởi tạo lần đầu
+            
+            # Khung cuộn ngang ôm lấy cột cuộn dọc (Tạo thành Cuộn 2D)
+            scrollable_2d_area = ft.Row(
+                controls=[img_column], 
+                scroll=ft.ScrollMode.AUTO, 
+                expand=True, 
+                vertical_alignment=ft.CrossAxisAlignment.START
+            )
+            
+            # Thanh công cụ Zoom nổi lên trên bản vẽ
+            zoom_toolbar = ft.Row([
+                ft.Container(content=ft.Row([ft.Icon(ft.Icons.ZOOM_OUT, color="white", size=18), ft.Text("Thu nhỏ", color="white", size=12, weight=ft.FontWeight.BOLD)]), bgcolor="blueGrey600", padding=8, border_radius=5, on_click=zoom_out),
+                ft.Container(content=ft.Row([ft.Icon(ft.Icons.RESTART_ALT, color="white", size=18), ft.Text("Mặc định", color="white", size=12, weight=ft.FontWeight.BOLD)]), bgcolor="orange600", padding=8, border_radius=5, on_click=reset_zoom),
+                ft.Container(content=ft.Row([ft.Icon(ft.Icons.ZOOM_IN, color="white", size=18), ft.Text("Phóng to", color="white", size=12, weight=ft.FontWeight.BOLD)]), bgcolor="blue700", padding=8, border_radius=5, on_click=zoom_in)
+            ], alignment=ft.MainAxisAlignment.END)
+            
+            doc_display_area.content = ft.Column([
+                zoom_toolbar,
+                scrollable_2d_area
+            ], expand=True)
+
         else:
             doc_display_area.content = ft.Text("Không thể tải tài liệu.", color="red")
+        
         page.update()
 
     # ---------------------------------------------------
@@ -250,7 +303,7 @@ def main(page: ft.Page):
     )
 
     # ---------------------------------------------------
-    # TÍNH NĂNG TÌM KIẾM THỜI GIAN THỰC (ĐÃ XÓA INITIALLY_EXPANDED)
+    # TÌM KIẾM THỜI GIAN THỰC
     # ---------------------------------------------------
     def create_menu_nodes(tree_dict, current_path="", level=0, search_term=""):
         controls = []
@@ -292,7 +345,6 @@ def main(page: ft.Page):
             folder_indent = level * 10
             folder_icon = ft.Icons.DIRECTIONS_CAR_ROUNDED if level == 0 else (ft.Icons.FOLDER_ROUNDED if sub_folders else ft.Icons.FOLDER_OPEN_ROUNDED)
             
-            # Gỡ bỏ initially_expanded để chống lỗi
             controls.append(
                 ft.ExpansionTile(
                     dense=True,
@@ -309,22 +361,16 @@ def main(page: ft.Page):
     def update_search(e_or_value):
         query = e_or_value.control.value.lower().strip() if hasattr(e_or_value, 'control') else e_or_value.lower().strip()
         filtered_controls = create_menu_nodes(file_tree, search_term=query)
-        
-        if not filtered_controls:
-            filtered_controls = [ft.Text("Không tìm thấy dữ liệu...", color="red400", italic=True)]
-        
+        if not filtered_controls: filtered_controls = [ft.Text("Không tìm thấy dữ liệu...", color="red400", italic=True)]
         sidebar_column.controls = filtered_controls
         sidebar_column.update()
 
     sidebar_column.controls = create_menu_nodes(file_tree)
-    if not sidebar_column.controls:
-        sidebar_column.controls = [ft.Text("Đang chờ tạo thư mục xe trong assets...", color="grey", italic=True)]
+    if not sidebar_column.controls: sidebar_column.controls = [ft.Text("Đang chờ tạo thư mục xe trong assets...", color="grey", italic=True)]
 
     search_input = ft.TextField(
-        hint_text="Tìm kiếm hệ thống, xe...", 
-        bgcolor="#1E293B", border_color="transparent", color="white", 
-        border_radius=5, content_padding=10, prefix_icon=ft.Icons.SEARCH,
-        on_change=update_search
+        hint_text="Tìm kiếm hệ thống, xe...", bgcolor="#1E293B", border_color="transparent", color="white", 
+        border_radius=5, content_padding=10, prefix_icon=ft.Icons.SEARCH, on_change=update_search
     )
 
     top_bar = ft.Container(
