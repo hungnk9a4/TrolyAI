@@ -15,52 +15,46 @@ if not os.path.exists(assets_dir):
     os.makedirs(assets_dir)
 
 # ---------------------------------------------------
-# BỘ GIẢI MÃ SỐ KHUNG THÔNG MINH (Hỗ trợ toàn bộ xe Việt Nam & Quốc tế)
+# KHO DỮ LIỆU SỐ KHUNG CHÍNH XÁC CỦA XƯỞNG TRƯỜNG
+# (Thầy có thể dễ dàng thêm số khung và thông tin thật của xe vào đây)
 # ---------------------------------------------------
-def decode_vin_smart(vin):
+LOCAL_VIN_DB = {
+    # Ví dụ xe tải tập lái KIA (Dựa theo ảnh đăng kiểm trước của thầy)
+    "RNHA39KHJTT": {
+        "make": "KIA",
+        "model": "Ô tô tải tập lái",
+        "year": "2026",
+        "engine": "2497 cm³ (2.5L Diesel)",
+        "reg_no": "60K-750.79"
+    },
+    # Thầy hãy thêm các xe thực tế khác của trường vào đây theo mẫu:
+    "RL4B23F35J5045270": {
+        "make": "THACO / HUYNDAI",
+        "model": "Xe thực hành xưởng động lực",
+        "year": "2018",
+        "engine": "2.9L Diesel",
+        "reg_no": "Đang cập nhật"
+    }
+}
+
+def decode_vin_exact(vin):
     vin_clean = vin.strip().upper()
-    if len(vin_clean) < 10:
-        return None, None, None, None, "Không đủ ký tự"
-
-    # 1. Tra cứu kho nội bộ của xưởng trường trước
-    LOCAL_VIN_DB = {
-        "RNHA39KHJTT": {"make": "KIA", "model": "Xe tải tập lái", "year": "2026", "engine": "2.5L Diesel"},
-        "RL4B23F35J": {"make": "HUYNDAI / THACO", "model": "Xe khách / Tải", "year": "2018", "engine": "2.9L Diesel"}
-    }
-    for prefix, info in LOCAL_VIN_DB.items():
-        if vin_clean.startswith(prefix):
-            return info["make"], info["model"], info["year"], info["engine"], "Kho nội bộ xưởng"
-
-    # 2. Giải mã tự động theo chuẩn Quốc tế (ISO 3779) cho mọi loại xe 16-17 ký tự
-    wmi = vin_clean[:3]
-    make_map = {
-        "KNA": "KIA (Hàn Quốc)", "KNB": "KIA", "KMH": "HYUNDAI", "MAL": "HYUNDAI / THACO",
-        "JMB": "MITSUBISHI", "JTE": "TOYOTA", "JTD": "TOYOTA", "4T1": "TOYOTA (Mỹ)",
-        "1NX": "TOYOTA", "ZFA": "FIAT", "VF1": "RENAULT", "WBA": "BMW", "WDB": "MERCEDES-BENZ"
-    }
     
-    # Nhận diện hãng qua mã WMI (3 ký tự đầu) hoặc mã quốc gia
-    make = make_map.get(wmi, "Xe lắp ráp / Nhập khẩu tổng hợp")
-    if wmi.startswith("RL") or wmi.startswith("RK") or wmi.startswith("MB"):
-        make = "Xe thương mại / Tải / Khách tại Việt Nam"
+    # 1. Kiểm tra khớp tuyệt đối toàn bộ số khung
+    if vin_clean in LOCAL_VIN_DB:
+        return LOCAL_VIN_DB[vin_clean], "Khớp tuyệt đối"
+        
+    # 2. Kiểm tra khớp theo tiền tố (nếu nhập 6-10 ký tự đầu)
+    for prefix, info in LOCAL_VIN_DB.items():
+        if vin_clean.startswith(prefix) or prefix.startswith(vin_clean):
+            return info, "Khớp theo mã nhận diện"
 
-    # Giải mã năm sản xuất từ ký tự thứ 10 theo chuẩn ISO
-    year_map = {
-        'J': '2018', 'K': '2019', 'L': '2020', 'M': '2021', 
-        'N': '2022', 'P': '2023', 'R': '2024', 'S': '2025', 'T': '2026', 'V': '2027'
-    }
-    year_char = vin_clean[9] if len(vin_clean) >= 10 else ""
-    year = year_map.get(year_char, "Đời xe tiêu chuẩn")
-
-    # Phỏng đoán dung tích/loại động cơ dựa trên ký tự dòng xe
-    engine = "Động cơ tiêu chuẩn (Xăng / Dầu)"
-    model = f"Mã nhận diện: {vin_clean[3:9]}"
-
-    return make, model, year, engine, "Giải mã tiêu chuẩn VIN"
+    # 3. Nếu không có trong kho dữ liệu trường
+    return None, "Không tìm thấy"
 
 # ---------------------------------------------------
 # CHUYỂN ĐỔI PDF THÀNH ẢNH
-# ---------------------------------------------------
+# -----------------------------------
 def convert_pdf_to_images(rel_pdf_path):
     norm_rel_path = os.path.normpath(rel_pdf_path)
     full_pdf_path = os.path.join(assets_dir, norm_rel_path)
@@ -290,40 +284,48 @@ def main(page: ft.Page):
         border_radius=5, content_padding=10, prefix_icon=ft.Icons.SEARCH, on_change=update_search
     )
 
-    vin_input = ft.TextField(label="Nhập số khung (Hỗ trợ 16-17 ký tự)", capitalization=ft.TextCapitalization.CHARACTERS, prefix_icon=ft.Icons.DIRECTIONS_CAR, border_radius=8)
+    vin_input = ft.TextField(label="Nhập số khung (16-17 ký tự)", capitalization=ft.TextCapitalization.CHARACTERS, prefix_icon=ft.Icons.DIRECTIONS_CAR, border_radius=8)
     vin_result_text = ft.Text("", size=14)
     vin_loading = ft.ProgressBar(visible=False)
 
     def process_vin(e):
         vin = vin_input.value.strip().upper()
-        if len(vin) < 6:
-            vin_result_text.value, vin_result_text.color = "❌ Vui lòng nhập ít nhất 6 ký tự số khung!", "red"
+        if len(vin) < 5:
+            vin_result_text.value, vin_result_text.color = "❌ Vui lòng nhập ít nhất 5 ký tự số khung!", "red"
             page.update()
             return
         
-        vin_result_text.value, vin_result_text.color, vin_loading.visible = "Đang giải mã thông tin số khung...", "blue", True
+        vin_result_text.value, vin_result_text.color, vin_loading.visible = "Đang tra cứu cơ sở dữ liệu xưởng...", "blue", True
         page.update()
 
-        make, model, year, engine, source = decode_vin_smart(vin)
+        car_info, status = decode_vin_exact(vin)
         vin_loading.visible = False
         
-        # Luôn luôn hiển thị thông tin xe đã giải mã thành công
-        vin_result_text.value = (
-            f"✅ THÔNG TIN PHƯƠNG TIỆN:\n"
-            f"• Số khung: {vin}\n"
-            f"• Hãng / Đơn vị: {make}\n"
-            f"• Đời xe (Năm): {year}\n"
-            f"• Động cơ / Thông số: {engine}\n\n"
-            f"👉 Hệ thống đã nhận diện thành công!"
-        )
-        vin_result_text.color, vin_result_text.weight = "green700", ft.FontWeight.BOLD
-        
-        # Thử tự động lọc menu bên trái nếu hãng xe có trong kho tài liệu
-        try:
-            search_input.value = make.split()[0] # Lấy từ đầu tiên của hãng (VD: KIA)
-            update_search(search_input.value)
-        except Exception:
-            pass
+        if car_info:
+            vin_result_text.value = (
+                f"✅ THÔNG TIN PHƯƠNG TIỆN CHÍNH XÁC:\n"
+                f"• Biển số / Ghi chú: {car_info.get('reg_no', 'N/A')}\n"
+                f"• Hãng xe: {car_info['make']}\n"
+                f"• Dòng xe: {car_info['model']}\n"
+                f"• Năm sản xuất: {car_info['year']}\n"
+                f"• Động cơ: {car_info['engine']}\n\n"
+                f"👉 Đã tự động lọc menu bên trái theo xe {car_info['make']}!"
+            )
+            vin_result_text.color, vin_result_text.weight = "green700", ft.FontWeight.BOLD
+            
+            # Tự động lọc menu theo hãng xe
+            try:
+                search_input.value = car_info['make'].split()[0]
+                update_search(search_input.value)
+            except Exception:
+                pass
+        else:
+            vin_result_text.value = (
+                f"ℹ️ Số khung: {vin}\n"
+                f"Chưa có thông tin trong danh mục nội bộ của trường.\n"
+                f"👉 Thầy có thể bổ sung số khung này vào biến 'LOCAL_VIN_DB' trong code."
+            )
+            vin_result_text.color, vin_result_text.weight = "orange800", ft.FontWeight.BOLD
             
         page.update()
 
