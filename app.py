@@ -256,11 +256,11 @@ def main(page: ft.Page):
         padding=10, on_click=close_vin_dialog
     )
 
-    # Đây là cửa sổ nổi đè lên toàn màn hình (an toàn tuyệt đối)
+    # Đã thay thế hàm gọi màu lỗi bằng Mã màu Hex trực tiếp (#99000000)
     vin_modal = ft.Container(
         visible=False,
-        left=0, right=0, top=0, bottom=0, # Phủ kín màn hình
-        bgcolor=ft.colors.with_opacity(0.6, "black"), # Làm mờ nền
+        left=0, right=0, top=0, bottom=0,
+        bgcolor="#99000000",
         alignment=ft.alignment.center,
         content=ft.Container(
             width=450, bgcolor="white", border_radius=10, padding=20,
@@ -272,95 +272,4 @@ def main(page: ft.Page):
                 vin_loading,
                 vin_result_text,
                 ft.Container(height=10),
-                ft.Row([btn_close, btn_decode], alignment=ft.MainAxisAlignment.END)
-            ], tight=True)
-        )
-    )
-
-    top_bar = ft.Container(
-        bgcolor="#0F172A", height=60, padding=15,
-        content=ft.Row([
-            ft.Row([ft.Icon(ft.Icons.DIRECTIONS_CAR, color="orange500", size=30), ft.Text("GDS AUTO EDU", color="white", weight=ft.FontWeight.BOLD, size=20)]),
-            ft.Container(content=ft.TextField(hint_text="Tìm kiếm linh kiện...", bgcolor="#1E293B", border_color="transparent", color="white", border_radius=5, content_padding=10, prefix_icon=ft.Icons.SEARCH), width=400),
-            ft.Row([
-                ft.IconButton(icon=ft.Icons.DOCUMENT_SCANNER_ROUNDED, icon_color="orange500", tooltip="Tra cứu VIN", on_click=open_vin_dialog),
-                ft.Container(width=5),
-                ft.CircleAvatar(content=ft.Icon(ft.Icons.PERSON, color="white"), bgcolor="grey700")
-            ])
-        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
-    )
-
-    # ---------------------------------------------------
-    # TẠO MENU BÊN TRÁI
-    # ---------------------------------------------------
-    def create_menu_nodes(tree_dict, current_path="", level=0):
-        controls = []
-        font_sizes = [13, 12, 12, 11, 11, 11]
-        icon_colors = ["orange600", "blue600", "teal600", "purple600", "indigo600", "blueGrey600"]
-        for key, value in sorted(tree_dict.items()):
-            if key == "__files__": continue
-            files = value.get("__files__", [])
-            sub_folders = {k: v for k, v in value.items() if k != "__files__"}
-            sub_controls = []
-            new_path = os.path.join(current_path, key) if current_path else key
-            
-            if sub_folders:
-                sub_controls.extend(create_menu_nodes(sub_folders, new_path, level + 1))
-            
-            for f in sorted(files):
-                doc_name = os.path.splitext(f)[0]
-                full_rel_path = os.path.join(new_path, f)
-                file_indent = (level + 1) * 10
-                sub_controls.append(
-                    ft.ListTile(
-                        dense=True,
-                        leading=ft.Row([ft.Container(width=file_indent) if file_indent > 0 else ft.Container(width=0), ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="red500", size=15)], spacing=2, tight=True),
-                        title=ft.Text(doc_name, color="#334155", size=11, weight=ft.FontWeight.W_500),
-                        on_click=lambda e, path=full_rel_path, name=doc_name: load_document(name, path)
-                    )
-                )
-            
-            current_size = font_sizes[min(level, len(font_sizes)-1)]
-            current_color = icon_colors[min(level, len(icon_colors)-1)]
-            folder_indent = level * 10
-            folder_icon = ft.Icons.DIRECTIONS_CAR_ROUNDED if level == 0 else (ft.Icons.FOLDER_ROUNDED if sub_folders else ft.Icons.FOLDER_OPEN_ROUNDED)
-            
-            controls.append(
-                ft.ExpansionTile(
-                    dense=True,
-                    title=ft.Text(key, weight=ft.FontWeight.BOLD if level < 2 else ft.FontWeight.W_500, size=current_size, color="#0F172A"),
-                    leading=ft.Row([ft.Container(width=folder_indent) if folder_indent > 0 else ft.Container(width=0), ft.Icon(folder_icon, color=current_color, size=16)], spacing=2, tight=True),
-                    controls=sub_controls
-                )
-            )
-        return controls
-
-    file_tree = build_file_tree(assets_dir)
-    menu_controls = create_menu_nodes(file_tree)
-    if not menu_controls: menu_controls = [ft.Text("Đang chờ tạo thư mục xe trong assets...", color="grey", italic=True)]
-
-    sidebar = ft.Container(
-        width=330, bgcolor="#F8FAFC", padding=10,
-        content=ft.Column([
-            ft.Text("DANH MỤC HÃNG XE & HỆ THỐNG", weight=ft.FontWeight.BOLD, color="grey700", size=12),
-            ft.Column(controls=menu_controls, scroll=ft.ScrollMode.AUTO, expand=True)
-        ])
-    )
-
-    main_workspace = ft.Container(
-        expand=True, bgcolor="#E2E8F0", padding=20,
-        content=ft.Column([
-            ft.Row([ft.Icon(ft.Icons.FOLDER_OPEN_ROUNDED, color="blueGrey700"), doc_title]),
-            ft.Divider(color="grey400"),
-            doc_display_area 
-        ])
-    )
-
-    body_layout = ft.Row([sidebar, main_workspace], expand=True, spacing=0)
-    main_layout = ft.Column([top_bar, body_layout], expand=True, spacing=0)
-    
-    # Đã thêm vin_modal vào Stack để nó nổi lên trên cùng khi được gọi
-    page.add(ft.Stack(controls=[main_layout, chat_window, vin_modal, fab], expand=True))
-
-port = int(os.environ.get("PORT", 8080))
-ft.run(main, view=ft.AppView.WEB_BROWSER, host="0.0.0.0", port=port, assets_dir="assets")
+                ft.Row([btn_close, btn_decode], alignment=
