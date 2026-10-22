@@ -44,15 +44,28 @@ def decode_vin_api(vin):
         return None, None, None, None
 
 # ---------------------------------------------------
-# 2. CHUYỂN ĐỔI PDF THÀNH ẢNH
+# 2. CHUYỂN ĐỔI PDF THÀNH ẢNH (TÍCH HỢP TÌM KIẾM THÔNG MINH)
 # ---------------------------------------------------
 def convert_pdf_to_images(rel_pdf_path):
     norm_rel_path = os.path.normpath(rel_pdf_path)
     full_pdf_path = os.path.join(assets_dir, norm_rel_path)
-    if not os.path.exists(full_pdf_path): return []
+    
+    # THUẬT TOÁN TỰ TÌM KIẾM: Nếu đường dẫn trực tiếp không thấy (do GitHub gộp tên thư mục), 
+    # hệ thống sẽ quét tìm file PDF theo tên cuối cùng trong toàn bộ thư mục assets.
+    if not os.path.exists(full_pdf_path):
+        target_filename = os.path.basename(rel_pdf_path)
+        found_path = None
+        for root, dirs, files in os.walk(assets_dir):
+            if target_filename in files:
+                found_path = os.path.join(root, target_filename)
+                break
+        if found_path:
+            full_pdf_path = found_path
+        else:
+            print(f"Không thể tìm thấy file PDF: {rel_pdf_path}")
+            return []
 
-    clean_prefix = norm_rel_path.replace(os.sep, "_").replace("/", "_").replace("\\", "_")
-    clean_prefix = os.path.splitext(clean_prefix)[0]
+    clean_prefix = os.path.splitext(os.path.basename(full_pdf_path))[0]
     
     img_files = []
     try:
@@ -64,7 +77,8 @@ def convert_pdf_to_images(rel_pdf_path):
                 pix = page.get_pixmap(dpi=150)
                 pix.save(img_path)
             img_files.append(img_name)
-    except Exception: pass
+    except Exception as ex:
+        print(f"Lỗi render ảnh từ PDF: {ex}")
     return img_files
 
 # ---------------------------------------------------
@@ -79,7 +93,8 @@ def build_file_tree(root_directory):
             if pdf_in_root: tree["__files__"] = pdf_in_root
             continue
         
-        parts = rel_path.split(os.sep)
+        # Hỗ trợ cả thư mục lồng nhau thực tế lẫn thư mục chứa dấu / do GitHub tạo
+        parts = rel_path.replace("\\", "/").split("/")
         current = tree
         for part in parts:
             if part not in current: current[part] = {}
@@ -186,7 +201,7 @@ def main(page: ft.Page):
     )
 
     # ---------------------------------------------------
-    # 4. HỆ THỐNG ZOOM VÀ CUỘN 2 CHIỀU (DÙNG CHUỖI "CONTAIN")
+    # 4. HÀM MỞ TÀI LIỆU VÀ ZOOM TRỰC QUAN
     # ---------------------------------------------------
     def load_document(title, rel_pdf_path):
         doc_title.value = title
@@ -237,7 +252,10 @@ def main(page: ft.Page):
             ], expand=True)
 
         else:
-            doc_display_area.content = ft.Text("Không thể tải tài liệu.", color="red")
+            doc_display_area.content = ft.Column([
+                ft.Icon(ft.Icons.ERROR_OUTLINE, color="red", size=40),
+                ft.Text("Không thể tải tài liệu. Vui lòng kiểm tra lại file PDF trên kho.", color="red")
+            ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
         
         page.update()
 
