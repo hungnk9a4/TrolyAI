@@ -350,4 +350,17 @@ def main(page: ft.Page):
     main_workspace = ft.Container(
         expand=True, bgcolor="#E2E8F0", padding=20,
         content=ft.Column([
-            ft.Row([ft.Icon(ft.Icons.FOLDER_OPEN_ROUNDED, color="blueGrey700"), doc_title
+            ft.Row([ft.Icon(ft.Icons.FOLDER_OPEN_ROUNDED, color="blueGrey700"), doc_title]),
+            ft.Divider(color="grey400"),
+            doc_display_area 
+        ])
+    )
+
+    body_layout = ft.Row([sidebar, main_workspace], expand=True, spacing=0)
+    main_layout = ft.Column([top_bar, body_layout], expand=True, spacing=0)
+    
+    # Đã thêm vin_modal vào Stack để nó nổi lên trên cùng khi được gọi
+    page.add(ft.Stack(controls=[main_layout, chat_window, vin_modal, fab], expand=True))
+
+port = int(os.environ.get("PORT", 8080))
+ft.run(main, view=ft.AppView.WEB_BROWSER, host="0.0.0.0", port=port, assets_dir="assets")
