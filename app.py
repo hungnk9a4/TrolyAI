@@ -217,7 +217,6 @@ def main(page: ft.Page):
         if make and make != "Không rõ":
             vin_result_text.value = f"✅ KẾT QUẢ GIẢI MÃ:\n• Hãng xe: {make}\n• Dòng xe: {model}\n• Đời xe: {year}\n• Động cơ: {engine}\n\n👉 Bạn có thể tìm theo hãng {make} ở menu."
             vin_result_text.color, vin_result_text.weight = "green700", ft.FontWeight.BOLD
-            # Tự động điền hãng xe vào ô tìm kiếm
             search_input.value = make
             update_search(make)
         else:
@@ -251,7 +250,7 @@ def main(page: ft.Page):
     )
 
     # ---------------------------------------------------
-    # TÍNH NĂNG TÌM KIẾM THỜI GIAN THỰC (REAL-TIME SEARCH)
+    # TÍNH NĂNG TÌM KIẾM THỜI GIAN THỰC (ĐÃ XÓA INITIALLY_EXPANDED)
     # ---------------------------------------------------
     def create_menu_nodes(tree_dict, current_path="", level=0, search_term=""):
         controls = []
@@ -264,16 +263,13 @@ def main(page: ft.Page):
             sub_controls = []
             new_path = os.path.join(current_path, key) if current_path else key
             
-            # Kiểm tra xem từ khóa có nằm trong tên thư mục này không
             folder_matches = (search_term in key.lower()) if search_term else False
             
             if sub_folders:
-                # Chuyển từ khóa tìm kiếm xuống các thư mục con
                 sub_controls.extend(create_menu_nodes(sub_folders, new_path, level + 1, search_term))
             
             for f in sorted(files):
                 doc_name = os.path.splitext(f)[0]
-                # Lọc file: Giữ lại nếu tên file khớp, hoặc thư mục cha đã khớp
                 if search_term and (search_term not in doc_name.lower()) and not folder_matches:
                     continue
                     
@@ -288,7 +284,6 @@ def main(page: ft.Page):
                     )
                 )
             
-            # Ẩn thư mục nếu đang tìm kiếm mà thư mục này (và các con của nó) không khớp
             if search_term and not folder_matches and not sub_controls:
                 continue
                 
@@ -297,14 +292,13 @@ def main(page: ft.Page):
             folder_indent = level * 10
             folder_icon = ft.Icons.DIRECTIONS_CAR_ROUNDED if level == 0 else (ft.Icons.FOLDER_ROUNDED if sub_folders else ft.Icons.FOLDER_OPEN_ROUNDED)
             
+            # Gỡ bỏ initially_expanded để chống lỗi
             controls.append(
                 ft.ExpansionTile(
                     dense=True,
                     title=ft.Text(key, weight=ft.FontWeight.BOLD if level < 2 else ft.FontWeight.W_500, size=current_size, color="#0F172A"),
                     leading=ft.Row([ft.Container(width=folder_indent) if folder_indent > 0 else ft.Container(width=0), ft.Icon(folder_icon, color=current_color, size=16)], spacing=2, tight=True),
-                    controls=sub_controls,
-                    # Tự động bung mở thư mục nếu đang ở chế độ tìm kiếm
-                    initially_expanded=True if search_term else False 
+                    controls=sub_controls
                 )
             )
         return controls
@@ -313,7 +307,6 @@ def main(page: ft.Page):
     sidebar_column = ft.Column(scroll=ft.ScrollMode.AUTO, expand=True)
 
     def update_search(e_or_value):
-        # Lấy giá trị từ sự kiện gõ phím hoặc chuỗi trực tiếp
         query = e_or_value.control.value.lower().strip() if hasattr(e_or_value, 'control') else e_or_value.lower().strip()
         filtered_controls = create_menu_nodes(file_tree, search_term=query)
         
@@ -323,12 +316,10 @@ def main(page: ft.Page):
         sidebar_column.controls = filtered_controls
         sidebar_column.update()
 
-    # Load menu lần đầu tiên
     sidebar_column.controls = create_menu_nodes(file_tree)
     if not sidebar_column.controls:
         sidebar_column.controls = [ft.Text("Đang chờ tạo thư mục xe trong assets...", color="grey", italic=True)]
 
-    # Gắn sự kiện on_change vào ô tìm kiếm
     search_input = ft.TextField(
         hint_text="Tìm kiếm hệ thống, xe...", 
         bgcolor="#1E293B", border_color="transparent", color="white", 
