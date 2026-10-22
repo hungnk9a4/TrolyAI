@@ -196,7 +196,7 @@ def main(page: ft.Page):
         page.update()
 
     # ---------------------------------------------------
-    # DIALOG TRA CỨU SỐ KHUNG (VIN)
+    # DIALOG TRA CỨU SỐ KHUNG (VIN) VỚI NÚT BẤM SIÊU BỀN
     # ---------------------------------------------------
     vin_input = ft.TextField(
         label="Nhập số khung (VIN) - 17 ký tự", 
@@ -237,13 +237,28 @@ def main(page: ft.Page):
         vin_dialog.open = False
         page.update()
 
+    # Thay thế Elevated Button bằng Container tùy chỉnh
+    btn_decode = ft.Container(
+        content=ft.Row([
+            ft.Icon(ft.Icons.SEARCH, color="white", size=16),
+            ft.Text("Giải Mã VIN", color="white", weight=ft.FontWeight.BOLD)
+        ], alignment=ft.MainAxisAlignment.CENTER, tight=True),
+        bgcolor="blue700",
+        padding=10,
+        border_radius=5,
+        on_click=process_vin
+    )
+
+    btn_close = ft.Container(
+        content=ft.Text("Đóng", color="blue700", weight=ft.FontWeight.BOLD),
+        padding=10,
+        on_click=close_vin_dialog
+    )
+
     vin_dialog = ft.AlertDialog(
         title=ft.Row([ft.Icon(ft.Icons.DOCUMENT_SCANNER, color="orange600"), ft.Text("Tra Cứu Số Khung (VIN)")]),
         content=ft.Column([vin_input, vin_loading, vin_result_text], tight=True, width=400),
-        actions=[
-            ft.ElevatedButton("Giải Mã VIN", icon=ft.Icons.SEARCH, color="white", bgcolor="blue700", on_click=process_vin),
-            ft.TextButton("Đóng", on_click=close_vin_dialog)
-        ],
+        actions=[btn_decode, btn_close],
         actions_alignment=ft.MainAxisAlignment.END
     )
 
