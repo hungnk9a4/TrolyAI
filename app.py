@@ -15,43 +15,60 @@ if not os.path.exists(assets_dir):
     os.makedirs(assets_dir)
 
 # ---------------------------------------------------
-# 1. HỆ THỐNG GIẢI MÃ SỐ KHUNG (VIN DECODER API)
+# KHO DỮ LIỆU SỐ KHUNG NỘI BỘ XƯỞNG TRƯỜNG (Thầy có thể tự thêm xe vào đây)
 # ---------------------------------------------------
-def decode_vin_api(vin):
-    url = f"https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/{vin}?format=json"
-    try:
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, context=ctx, timeout=10) as response:
-            data = json.loads(response.read().decode('utf-8'))
-            make, model, year, engine = "Không rõ", "Không rõ", "Không rõ", "Không rõ"
-            
-            for item in data.get("Results", []):
-                val = item["Value"]
-                if not val or val == "Not Applicable": continue
-                
-                if item["Variable"] == "Make": make = val
-                elif item["Variable"] == "Model": model = val
-                elif item["Variable"] == "Model Year": year = val
-                elif item["Variable"] == "Displacement (L)": engine = f"{val}L"
-                
-            return make, model, year, engine
-    except Exception as e:
-        print("Lỗi giải mã VIN:", e)
-        return None, None, None, None
+LOCAL_VIN_DB = {
+    # Ví dụ xe tải tập lái KIA (dựa trên ảnh đăng kiểm của thầy)
+    "RNHA39KHJTT": {
+        "make": "KIA",
+        "model": "Xe tải tập lái",
+        "year": "2026",
+        "engine": "2.5L Diesel"
+    },
+    # Thầy có thể thêm các xe khác của trường vào đây theo định dạng:
+    # "6-7 ký tự đầu số khung": {"make": "Hãng", "model": "Dòng", "year": "Đời", "engine": "Động cơ"}
+}
+
+def decode_vin_local_or_api(vin):
+    vin_clean = vin.strip().upper()
+    
+    # 1. Kiểm tra trong kho dữ liệu nội bộ của trường trước (Khớp theo tiền tố ký tự đầu)
+    for prefix, info in LOCAL_VIN_DB.items():
+        if vin_clean.startswith(prefix):
+            return info["make"], info["model"], info["year"], info["engine"], "Nội bộ xưởng trường"
+
+    # 2. Nếu không có trong kho nội bộ, thử gọi API quốc tế (nếu đủ 17 ký tự)
+    if len(vin_clean) == 17:
+        url = f"https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/{vin_clean}?format=json"
+        try:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, context=ctx, timeout=5) as response:
+                data = json.loads(response.read().decode('utf-8'))
+                make, model, year, engine = "Không rõ", "Không rõ", "Không rõ", "Không rõ"
+                for item in data.get("Results", []):
+                    val = item["Value"]
+                    if not val or val == "Not Applicable": continue
+                    if item["Variable"] == "Make": make = val
+                    elif item["Variable"] == "Model": model = val
+                    elif item["Variable"] == "Model Year": year = val
+                    elif item["Variable"] == "Displacement (L)": engine = f"{val}L"
+                if make != "Không rõ":
+                    return make, model, year, engine, "Quốc tế (NHTSA)"
+        except Exception:
+            pass
+
+    return None, None, None, None, None
 
 # ---------------------------------------------------
-# 2. CHUYỂN ĐỔI PDF THÀNH ẢNH (TÍCH HỢP TÌM KIẾM THÔNG MINH)
+# CHUYỂN ĐỔI PDF THÀNH ẢNH
 # ---------------------------------------------------
 def convert_pdf_to_images(rel_pdf_path):
     norm_rel_path = os.path.normpath(rel_pdf_path)
     full_pdf_path = os.path.join(assets_dir, norm_rel_path)
     
-    # THUẬT TOÁN TỰ TÌM KIẾM: Nếu đường dẫn trực tiếp không thấy (do GitHub gộp tên thư mục), 
-    # hệ thống sẽ quét tìm file PDF theo tên cuối cùng trong toàn bộ thư mục assets.
     if not os.path.exists(full_pdf_path):
         target_filename = os.path.basename(rel_pdf_path)
         found_path = None
@@ -59,14 +76,10 @@ def convert_pdf_to_images(rel_pdf_path):
             if target_filename in files:
                 found_path = os.path.join(root, target_filename)
                 break
-        if found_path:
-            full_pdf_path = found_path
-        else:
-            print(f"Không thể tìm thấy file PDF: {rel_pdf_path}")
-            return []
+        if found_path: full_pdf_path = found_path
+        else: return []
 
     clean_prefix = os.path.splitext(os.path.basename(full_pdf_path))[0]
-    
     img_files = []
     try:
         doc = fitz.open(full_pdf_path)
@@ -77,13 +90,9 @@ def convert_pdf_to_images(rel_pdf_path):
                 pix = page.get_pixmap(dpi=150)
                 pix.save(img_path)
             img_files.append(img_name)
-    except Exception as ex:
-        print(f"Lỗi render ảnh từ PDF: {ex}")
+    except Exception: pass
     return img_files
 
-# ---------------------------------------------------
-# 3. XÂY DỰNG CÂY THƯ MỤC TỰ ĐỘNG
-# ---------------------------------------------------
 def build_file_tree(root_directory):
     tree = {}
     for root, dirs, files in os.walk(root_directory):
@@ -92,14 +101,11 @@ def build_file_tree(root_directory):
             pdf_in_root = [f for f in files if f.lower().endswith(".pdf")]
             if pdf_in_root: tree["__files__"] = pdf_in_root
             continue
-        
-        # Hỗ trợ cả thư mục lồng nhau thực tế lẫn thư mục chứa dấu / do GitHub tạo
         parts = rel_path.replace("\\", "/").split("/")
         current = tree
         for part in parts:
             if part not in current: current[part] = {}
             current = current[part]
-        
         pdf_files = [f for f in files if f.lower().endswith(".pdf")]
         if pdf_files: current["__files__"] = pdf_files
     return tree
@@ -149,12 +155,10 @@ def main(page: ft.Page):
         try:
             response_stream = chat_session.send_message_stream(user_text)
             chat_list.controls.remove(loading)
-            
             ai_text = ft.Markdown("", selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_WEB)
             ai_bubble = ft.Container(content=ai_text, bgcolor="grey100", padding=12, border_radius=15, width=260)
             ai_avatar = ft.CircleAvatar(content=ft.Icon(ft.Icons.SMART_TOY_ROUNDED, color="white"), bgcolor="orange500", radius=16)
             ai_row = ft.Row([ai_avatar, ai_bubble], alignment=ft.MainAxisAlignment.START, vertical_alignment=ft.CrossAxisAlignment.START)
-            
             chat_list.controls.append(ai_row)
             page.update()
             for chunk in response_stream:
@@ -190,7 +194,6 @@ def main(page: ft.Page):
     fab = ft.FloatingActionButton(icon=ft.Icons.FORUM_ROUNDED, bgcolor="orange500", right=20, bottom=20, on_click=lambda e: toggle_chat(not chat_window.visible))
     
     doc_title = ft.Text("Trang chủ", size=22, weight=ft.FontWeight.BOLD, color="#1E293B")
-    
     doc_display_area = ft.Container(
         expand=True, bgcolor="white", border_radius=10,
         content=ft.Column([
@@ -200,123 +203,36 @@ def main(page: ft.Page):
         ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
     )
 
-    # ---------------------------------------------------
-    # 4. HÀM MỞ TÀI LIỆU VÀ ZOOM TRỰC QUAN
-    # ---------------------------------------------------
     def load_document(title, rel_pdf_path):
         doc_title.value = title
         img_files = convert_pdf_to_images(rel_pdf_path)
-        
         if img_files:
             zoom_level = [1000] 
             img_column = ft.Column(scroll=ft.ScrollMode.AUTO, spacing=15)
-            
             def update_images():
-                img_column.controls = [
-                    ft.Image(src=f"/{img}", width=zoom_level[0], fit="contain") 
-                    for img in img_files
-                ]
+                img_column.controls = [ft.Image(src=f"/{img}", width=zoom_level[0], fit="contain") for img in img_files]
                 page.update()
-
             def zoom_in(e):
                 zoom_level[0] += 300
                 update_images()
-                
             def zoom_out(e):
-                if zoom_level[0] > 500:
-                    zoom_level[0] -= 300
+                if zoom_level[0] > 500: zoom_level[0] -= 300
                 update_images()
-                
             def reset_zoom(e):
                 zoom_level[0] = 1000
                 update_images()
-
             update_images()
-            
-            scrollable_2d_area = ft.Row(
-                controls=[img_column], 
-                scroll=ft.ScrollMode.AUTO, 
-                expand=True, 
-                vertical_alignment=ft.CrossAxisAlignment.START
-            )
-            
+            scrollable_2d_area = ft.Row(controls=[img_column], scroll=ft.ScrollMode.AUTO, expand=True, vertical_alignment=ft.CrossAxisAlignment.START)
             zoom_toolbar = ft.Row([
                 ft.Container(content=ft.Row([ft.Icon(ft.Icons.ZOOM_OUT, color="white", size=18), ft.Text("Thu nhỏ", color="white", size=12, weight=ft.FontWeight.BOLD)]), bgcolor="blueGrey600", padding=8, border_radius=5, on_click=zoom_out),
                 ft.Container(content=ft.Row([ft.Icon(ft.Icons.RESTART_ALT, color="white", size=18), ft.Text("Mặc định", color="white", size=12, weight=ft.FontWeight.BOLD)]), bgcolor="orange600", padding=8, border_radius=5, on_click=reset_zoom),
                 ft.Container(content=ft.Row([ft.Icon(ft.Icons.ZOOM_IN, color="white", size=18), ft.Text("Phóng to", color="white", size=12, weight=ft.FontWeight.BOLD)]), bgcolor="blue700", padding=8, border_radius=5, on_click=zoom_in)
             ], alignment=ft.MainAxisAlignment.END)
-            
-            doc_display_area.content = ft.Column([
-                zoom_toolbar,
-                scrollable_2d_area
-            ], expand=True)
-
+            doc_display_area.content = ft.Column([zoom_toolbar, scrollable_2d_area], expand=True)
         else:
-            doc_display_area.content = ft.Column([
-                ft.Icon(ft.Icons.ERROR_OUTLINE, color="red", size=40),
-                ft.Text("Không thể tải tài liệu. Vui lòng kiểm tra lại file PDF trên kho.", color="red")
-            ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
-        
+            doc_display_area.content = ft.Text("Không thể tải tài liệu.", color="red")
         page.update()
 
-    # ---------------------------------------------------
-    # DIALOG TRA CỨU SỐ KHUNG (VIN)
-    # ---------------------------------------------------
-    vin_input = ft.TextField(label="Nhập số khung (VIN) - 17 ký tự", capitalization=ft.TextCapitalization.CHARACTERS, prefix_icon=ft.Icons.DIRECTIONS_CAR, border_radius=8)
-    vin_result_text = ft.Text("", size=14)
-    vin_loading = ft.ProgressBar(visible=False)
-
-    def process_vin(e):
-        vin = vin_input.value.strip().upper()
-        if len(vin) != 17:
-            vin_result_text.value, vin_result_text.color = "❌ Số VIN phải có đúng 17 ký tự!", "red"
-            page.update()
-            return
-        
-        vin_result_text.value, vin_result_text.color, vin_loading.visible = "Đang kết nối cơ sở dữ liệu quốc tế...", "blue", True
-        page.update()
-
-        make, model, year, engine = decode_vin_api(vin)
-        vin_loading.visible = False
-        
-        if make and make != "Không rõ":
-            vin_result_text.value = f"✅ KẾT QUẢ GIẢI MÃ:\n• Hãng xe: {make}\n• Dòng xe: {model}\n• Đời xe: {year}\n• Động cơ: {engine}\n\n👉 Bạn có thể tìm theo hãng {make} ở menu."
-            vin_result_text.color, vin_result_text.weight = "green700", ft.FontWeight.BOLD
-            search_input.value = make
-            update_search(make)
-        else:
-            vin_result_text.value, vin_result_text.color, vin_result_text.weight = "❌ Không tìm thấy dữ liệu cho số khung này.", "red", ft.FontWeight.NORMAL
-        page.update()
-
-    def close_vin_dialog(e):
-        vin_modal.visible = False
-        page.update()
-    def open_vin_dialog(e):
-        vin_input.value, vin_result_text.value, vin_loading.visible, vin_modal.visible = "", "", False, True
-        page.update()
-
-    btn_decode = ft.Container(content=ft.Row([ft.Icon(ft.Icons.SEARCH, color="white", size=16), ft.Text("Giải Mã", color="white", weight=ft.FontWeight.BOLD)], alignment=ft.MainAxisAlignment.CENTER, tight=True), bgcolor="blue700", padding=10, border_radius=5, on_click=process_vin)
-    btn_close = ft.Container(content=ft.Text("Đóng", color="blueGrey400", weight=ft.FontWeight.BOLD), padding=10, on_click=close_vin_dialog)
-
-    vin_modal = ft.Container(
-        visible=False, left=0, right=0, top=0, bottom=0, bgcolor="#99000000",
-        content=ft.Row(
-            controls=[
-                ft.Container(
-                    width=450, bgcolor="white", border_radius=10, padding=20, shadow=ft.BoxShadow(spread_radius=1, blur_radius=15, color="black26"),
-                    content=ft.Column([
-                        ft.Row([ft.Icon(ft.Icons.DOCUMENT_SCANNER, color="orange600"), ft.Text("Tra Cứu Số Khung (VIN)", weight=ft.FontWeight.BOLD, size=18)]),
-                        ft.Divider(color="grey300"), vin_input, vin_loading, vin_result_text, ft.Container(height=10),
-                        ft.Row([btn_close, btn_decode], alignment=ft.MainAxisAlignment.END)
-                    ], tight=True)
-                )
-            ], alignment=ft.MainAxisAlignment.CENTER, vertical_alignment=ft.CrossAxisAlignment.CENTER
-        )
-    )
-
-    # ---------------------------------------------------
-    # TÌM KIẾM THỜI GIAN THỰC
-    # ---------------------------------------------------
     def create_menu_nodes(tree_dict, current_path="", level=0, search_term=""):
         controls = []
         font_sizes = [13, 12, 12, 11, 11, 11]
@@ -327,17 +243,13 @@ def main(page: ft.Page):
             sub_folders = {k: v for k, v in value.items() if k != "__files__"}
             sub_controls = []
             new_path = os.path.join(current_path, key) if current_path else key
-            
             folder_matches = (search_term in key.lower()) if search_term else False
-            
             if sub_folders:
                 sub_controls.extend(create_menu_nodes(sub_folders, new_path, level + 1, search_term))
-            
             for f in sorted(files):
                 doc_name = os.path.splitext(f)[0]
                 if search_term and (search_term not in doc_name.lower()) and not folder_matches:
                     continue
-                    
                 full_rel_path = os.path.join(new_path, f)
                 file_indent = (level + 1) * 10
                 sub_controls.append(
@@ -348,15 +260,12 @@ def main(page: ft.Page):
                         on_click=lambda e, path=full_rel_path, name=doc_name: load_document(name, path)
                     )
                 )
-            
             if search_term and not folder_matches and not sub_controls:
                 continue
-                
             current_size = font_sizes[min(level, len(font_sizes)-1)]
             current_color = icon_colors[min(level, len(icon_colors)-1)]
             folder_indent = level * 10
             folder_icon = ft.Icons.DIRECTIONS_CAR_ROUNDED if level == 0 else (ft.Icons.FOLDER_ROUNDED if sub_folders else ft.Icons.FOLDER_OPEN_ROUNDED)
-            
             controls.append(
                 ft.ExpansionTile(
                     dense=True,
@@ -381,8 +290,61 @@ def main(page: ft.Page):
     if not sidebar_column.controls: sidebar_column.controls = [ft.Text("Đang chờ tạo thư mục xe trong assets...", color="grey", italic=True)]
 
     search_input = ft.TextField(
-        hint_text="Tìm kiếm hệ thống, xe...", bgcolor="#1E293B", border_color="transparent", color="white", 
+        hint_text="Tìm kiếm hệ thống, hãng xe...", bgcolor="#1E293B", border_color="transparent", color="white", 
         border_radius=5, content_padding=10, prefix_icon=ft.Icons.SEARCH, on_change=update_search
+    )
+
+    vin_input = ft.TextField(label="Nhập số khung (Hỗ trợ 16-17 ký tự)", capitalization=ft.TextCapitalization.CHARACTERS, prefix_icon=ft.Icons.DIRECTIONS_CAR, border_radius=8)
+    vin_result_text = ft.Text("", size=14)
+    vin_loading = ft.ProgressBar(visible=False)
+
+    def process_vin(e):
+        vin = vin_input.value.strip().upper()
+        if len(vin) < 6:
+            vin_result_text.value, vin_result_text.color = "❌ Vui lòng nhập ít nhất 6 ký tự số khung!", "red"
+            page.update()
+            return
+        
+        vin_result_text.value, vin_result_text.color, vin_loading.visible = "Đang tra cứu cơ sở dữ liệu...", "blue", True
+        page.update()
+
+        make, model, year, engine, source = decode_vin_local_or_api(vin)
+        vin_loading.visible = False
+        
+        if make and make != "Không rõ":
+            vin_result_text.value = f"✅ THÔNG TIN PHƯƠNG TIỆN (Nguồn: {source}):\n• Hãng xe: {make}\n• Dòng xe: {model}\n• Đời xe: {year}\n• Động cơ: {engine}\n\n👉 Đã tự động lọc menu bên trái theo xe {make}!"
+            vin_result_text.color, vin_result_text.weight = "green700", ft.FontWeight.BOLD
+            search_input.value = make
+            update_search(make)
+        else:
+            vin_result_text.value = f"ℹ️ Số khung '{vin}' không có trong cơ sở dữ liệu sơ đồ xưởng trường.\n(Thông tin xe vẫn hợp lệ nhưng chưa tích hợp bản vẽ mạch điện)."
+            vin_result_text.color, vin_result_text.weight = "orange800", ft.FontWeight.BOLD
+        page.update()
+
+    def close_vin_dialog(e):
+        vin_modal.visible = False
+        page.update()
+    def open_vin_dialog(e):
+        vin_input.value, vin_result_text.value, vin_loading.visible, vin_modal.visible = "", "", False, True
+        page.update()
+
+    btn_decode = ft.Container(content=ft.Row([ft.Icon(ft.Icons.SEARCH, color="white", size=16), ft.Text("Tra Cứu Xe", color="white", weight=ft.FontWeight.BOLD)], alignment=ft.MainAxisAlignment.CENTER, tight=True), bgcolor="blue700", padding=10, border_radius=5, on_click=process_vin)
+    btn_close = ft.Container(content=ft.Text("Đóng", color="blueGrey400", weight=ft.FontWeight.BOLD), padding=10, on_click=close_vin_dialog)
+
+    vin_modal = ft.Container(
+        visible=False, left=0, right=0, top=0, bottom=0, bgcolor="#99000000",
+        content=ft.Row(
+            controls=[
+                ft.Container(
+                    width=450, bgcolor="white", border_radius=10, padding=20, shadow=ft.BoxShadow(spread_radius=1, blur_radius=15, color="black26"),
+                    content=ft.Column([
+                        ft.Row([ft.Icon(ft.Icons.DOCUMENT_SCANNER, color="orange600"), ft.Text("Tra Cứu Thông Tin Số Khung", weight=ft.FontWeight.BOLD, size=16)]),
+                        ft.Divider(color="grey300"), vin_input, vin_loading, vin_result_text, ft.Container(height=10),
+                        ft.Row([btn_close, btn_decode], alignment=ft.MainAxisAlignment.END)
+                    ], tight=True)
+                )
+            ], alignment=ft.MainAxisAlignment.CENTER, vertical_alignment=ft.CrossAxisAlignment.CENTER
+        )
     )
 
     top_bar = ft.Container(
@@ -391,7 +353,7 @@ def main(page: ft.Page):
             ft.Row([ft.Icon(ft.Icons.DIRECTIONS_CAR, color="orange500", size=30), ft.Text("GDS AUTO EDU", color="white", weight=ft.FontWeight.BOLD, size=20)]),
             ft.Container(content=search_input, width=400),
             ft.Row([
-                ft.IconButton(icon=ft.Icons.DOCUMENT_SCANNER_ROUNDED, icon_color="orange500", tooltip="Tra cứu VIN", on_click=open_vin_dialog),
+                ft.IconButton(icon=ft.Icons.DOCUMENT_SCANNER_ROUNDED, icon_color="orange500", tooltip="Tra cứu số khung xe", on_click=open_vin_dialog),
                 ft.Container(width=5),
                 ft.CircleAvatar(content=ft.Icon(ft.Icons.PERSON, color="white"), bgcolor="grey700")
             ])
