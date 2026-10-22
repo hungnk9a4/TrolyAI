@@ -3,6 +3,9 @@ from google import genai
 from google.genai import types
 import os
 import fitz  # PyMuPDF
+import urllib.request
+import json
+import ssl
 
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key) if api_key else None
@@ -12,15 +15,42 @@ if not os.path.exists(assets_dir):
     os.makedirs(assets_dir)
 
 # ---------------------------------------------------
-# 1. CHUYỂN ĐỔI PDF THÀNH ẢNH (ĐÃ CHUẨN HÓA ĐƯỜNG DẪN)
+# 1. HỆ THỐNG GIẢI MÃ SỐ KHUNG (VIN DECODER API)
+# ---------------------------------------------------
+def decode_vin_api(vin):
+    url = f"https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/{vin}?format=json"
+    try:
+        # Bỏ qua xác thực SSL nghiêm ngặt trên máy chủ đám mây
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, context=ctx, timeout=10) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            make, model, year, engine = "Không rõ", "Không rõ", "Không rõ", "Không rõ"
+            
+            for item in data.get("Results", []):
+                val = item["Value"]
+                if not val or val == "Not Applicable": continue
+                
+                if item["Variable"] == "Make": make = val
+                elif item["Variable"] == "Model": model = val
+                elif item["Variable"] == "Model Year": year = val
+                elif item["Variable"] == "Displacement (L)": engine = f"{val}L"
+                
+            return make, model, year, engine
+    except Exception as e:
+        print("Lỗi giải mã VIN:", e)
+        return None, None, None, None
+
+# ---------------------------------------------------
+# 2. CHUYỂN ĐỔI PDF THÀNH ẢNH
 # ---------------------------------------------------
 def convert_pdf_to_images(rel_pdf_path):
     norm_rel_path = os.path.normpath(rel_pdf_path)
     full_pdf_path = os.path.join(assets_dir, norm_rel_path)
-    
-    if not os.path.exists(full_pdf_path):
-        print(f"Không tìm thấy file: {full_pdf_path}")
-        return []
+    if not os.path.exists(full_pdf_path): return []
 
     clean_prefix = norm_rel_path.replace(os.sep, "_").replace("/", "_").replace("\\", "_")
     clean_prefix = os.path.splitext(clean_prefix)[0]
@@ -35,12 +65,11 @@ def convert_pdf_to_images(rel_pdf_path):
                 pix = page.get_pixmap(dpi=150)
                 pix.save(img_path)
             img_files.append(img_name)
-    except Exception as ex:
-        print(f"Lỗi chuyển đổi PDF {full_pdf_path}: {ex}")
+    except Exception: pass
     return img_files
 
 # ---------------------------------------------------
-# 2. XÂY DỰNG CÂY THƯ MỤC TỰ ĐỘNG
+# 3. XÂY DỰNG CÂY THƯ MỤC TỰ ĐỘNG
 # ---------------------------------------------------
 def build_file_tree(root_directory):
     tree = {}
@@ -48,29 +77,21 @@ def build_file_tree(root_directory):
         rel_path = os.path.relpath(root, root_directory)
         if rel_path == ".":
             pdf_in_root = [f for f in files if f.lower().endswith(".pdf")]
-            if pdf_in_root:
-                tree["__files__"] = pdf_in_root
+            if pdf_in_root: tree["__files__"] = pdf_in_root
             continue
         
         parts = rel_path.split(os.sep)
         current = tree
         for part in parts:
-            if part not in current:
-                current[part] = {}
+            if part not in current: current[part] = {}
             current = current[part]
         
         pdf_files = [f for f in files if f.lower().endswith(".pdf")]
-        if pdf_files:
-            current["__files__"] = pdf_files
+        if pdf_files: current["__files__"] = pdf_files
     return tree
 
-system_instruction = """
-Bạn là một Chuyên gia chẩn đoán kỹ thuật ô tô cấp cao, được tích hợp trong phần mềm GDS Auto Edu.
-Nhiệm vụ của bạn là hướng dẫn sinh viên đo kiểm, chẩn đoán lỗi dựa trên bộ Cẩm nang sửa chữa.
-"""
-
 config = types.GenerateContentConfig(
-    system_instruction=system_instruction,
+    system_instruction="Bạn là Chuyên gia chẩn đoán kỹ thuật ô tô cấp cao của GDS Auto Edu.",
     temperature=0.2 
 )
 
@@ -78,9 +99,7 @@ def main(page: ft.Page):
     page.title = "GDS Auto Edu - Nền tảng Tra cứu ALLDATA"
     page.padding = 0 
     page.theme_mode = ft.ThemeMode.LIGHT
-    page.window_width = 1200
-    page.window_height = 800
-
+    
     chat_session = client.chats.create(model="gemini-3.8-flash", config=config) if client else None
     chat_list = ft.ListView(expand=True, auto_scroll=True, spacing=15)
 
@@ -88,19 +107,10 @@ def main(page: ft.Page):
         is_user = sender == "Bạn"
         avatar = ft.CircleAvatar(
             content=ft.Icon(ft.Icons.PERSON_ROUNDED if is_user else ft.Icons.SMART_TOY_ROUNDED, color="white"),
-            bgcolor="blue400" if is_user else "orange500",
-            radius=16
+            bgcolor="blue400" if is_user else "orange500", radius=16
         )
         content_control = ft.Text(text, color="black87", size=14) if is_user else ft.Markdown(text, selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_WEB)
-        
-        msg_bubble = ft.Container(
-            content=content_control,
-            bgcolor="blue50" if is_user else "grey100",
-            padding=12,
-            border_radius=15,
-            width=260
-        )
-        
+        msg_bubble = ft.Container(content=content_control, bgcolor="blue50" if is_user else "grey100", padding=12, border_radius=15, width=260)
         row = ft.Row(
             controls=[msg_bubble, avatar] if is_user else [avatar, msg_bubble],
             alignment=ft.MainAxisAlignment.END if is_user else ft.MainAxisAlignment.START,
@@ -133,7 +143,6 @@ def main(page: ft.Page):
             
             chat_list.controls.append(ai_row)
             page.update()
-
             for chunk in response_stream:
                 ai_text.value += chunk.text
                 page.update()
@@ -165,8 +174,8 @@ def main(page: ft.Page):
         page.update()
 
     fab = ft.FloatingActionButton(icon=ft.Icons.FORUM_ROUNDED, bgcolor="orange500", right=20, bottom=20, on_click=lambda e: toggle_chat(not chat_window.visible))
-    doc_title = ft.Text("Trang chủ", size=22, weight=ft.FontWeight.BOLD, color="#1E293B")
     
+    doc_title = ft.Text("Trang chủ", size=22, weight=ft.FontWeight.BOLD, color="#1E293B")
     doc_display_area = ft.Container(
         expand=True, bgcolor="white", border_radius=10,
         content=ft.Column([
@@ -181,43 +190,96 @@ def main(page: ft.Page):
         img_files = convert_pdf_to_images(rel_pdf_path)
         if img_files:
             image_controls = [ft.Image(src=f"/{img}", fit="contain", expand=True) for img in img_files]
-            doc_display_area.content = ft.ListView(
-                controls=image_controls,
-                expand=True,
-                spacing=15
-            )
+            doc_display_area.content = ft.ListView(controls=image_controls, expand=True, spacing=15)
         else:
-            doc_display_area.content = ft.Column([
-                ft.Icon(ft.Icons.ERROR_OUTLINE_ROUNDED, color="red400", size=50),
-                ft.Text("Không thể tải tài liệu này. Hãy kiểm tra tên file PDF trong thư mục assets.", color="red400", weight=ft.FontWeight.BOLD)
-            ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+            doc_display_area.content = ft.Text("Không thể tải tài liệu.", color="red")
         page.update()
 
+    # ---------------------------------------------------
+    # DIALOG TRA CỨU SỐ KHUNG (VIN)
+    # ---------------------------------------------------
+    vin_input = ft.TextField(
+        label="Nhập số khung (VIN) - 17 ký tự", 
+        capitalization=ft.TextCapitalization.CHARACTERS,
+        prefix_icon=ft.Icons.DIRECTIONS_CAR,
+        border_radius=8
+    )
+    vin_result_text = ft.Text("", size=14)
+    vin_loading = ft.ProgressBar(visible=False)
+
+    def process_vin(e):
+        vin = vin_input.value.strip().upper()
+        if len(vin) != 17:
+            vin_result_text.value = "❌ Số VIN phải có đúng 17 ký tự!"
+            vin_result_text.color = "red"
+            page.update()
+            return
+        
+        vin_result_text.value = "Đang kết nối cơ sở dữ liệu quốc tế..."
+        vin_result_text.color = "blue"
+        vin_loading.visible = True
+        page.update()
+
+        make, model, year, engine = decode_vin_api(vin)
+        vin_loading.visible = False
+        
+        if make and make != "Không rõ":
+            vin_result_text.value = f"✅ KẾT QUẢ GIẢI MÃ:\n• Hãng xe: {make}\n• Dòng xe: {model}\n• Đời xe: {year}\n• Động cơ: {engine}\n\n👉 Vui lòng tìm theo Hãng {make} ở menu bên trái."
+            vin_result_text.color = "green700"
+            vin_result_text.weight = ft.FontWeight.BOLD
+        else:
+            vin_result_text.value = "❌ Không tìm thấy dữ liệu cho số khung này."
+            vin_result_text.color = "red"
+            vin_result_text.weight = ft.FontWeight.NORMAL
+        page.update()
+
+    def close_vin_dialog(e):
+        vin_dialog.open = False
+        page.update()
+
+    vin_dialog = ft.AlertDialog(
+        title=ft.Row([ft.Icon(ft.Icons.DOCUMENT_SCANNER, color="orange600"), ft.Text("Tra Cứu Số Khung (VIN)")]),
+        content=ft.Column([vin_input, vin_loading, vin_result_text], tight=True, width=400),
+        actions=[
+            ft.ElevatedButton("Giải Mã VIN", icon=ft.Icons.SEARCH, color="white", bgcolor="blue700", on_click=process_vin),
+            ft.TextButton("Đóng", on_click=close_vin_dialog)
+        ],
+        actions_alignment=ft.MainAxisAlignment.END
+    )
+
+    def open_vin_dialog(e):
+        vin_input.value = ""
+        vin_result_text.value = ""
+        vin_loading.visible = False
+        page.dialog = vin_dialog
+        vin_dialog.open = True
+        page.update()
+
+    # THÊM NÚT SCAN VIN LÊN TOP BAR
     top_bar = ft.Container(
         bgcolor="#0F172A", height=60, padding=15,
         content=ft.Row([
             ft.Row([ft.Icon(ft.Icons.DIRECTIONS_CAR, color="orange500", size=30), ft.Text("GDS AUTO EDU", color="white", weight=ft.FontWeight.BOLD, size=20)]),
             ft.Container(content=ft.TextField(hint_text="Tìm kiếm linh kiện...", bgcolor="#1E293B", border_color="transparent", color="white", border_radius=5, content_padding=10, prefix_icon=ft.Icons.SEARCH), width=400),
-            ft.Row([ft.Icon(ft.Icons.NOTIFICATIONS, color="white"), ft.Container(width=10), ft.CircleAvatar(content=ft.Icon(ft.Icons.PERSON, color="white"), bgcolor="grey700")])
+            ft.Row([
+                ft.IconButton(icon=ft.Icons.DOCUMENT_SCANNER_ROUNDED, icon_color="orange500", tooltip="Tra cứu VIN", on_click=open_vin_dialog),
+                ft.Container(width=5),
+                ft.CircleAvatar(content=ft.Icon(ft.Icons.PERSON, color="white"), bgcolor="grey700")
+            ])
         ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
     )
 
     # ---------------------------------------------------
-    # HÀM TẠO MENU THỤT LỀ BẬC THANG & CỠ CHỮ NHỎ TÙY CHỈNH
+    # TẠO MENU BÊN TRÁI
     # ---------------------------------------------------
     def create_menu_nodes(tree_dict, current_path="", level=0):
         controls = []
-        # Cỡ chữ giảm dần theo tầng
         font_sizes = [13, 12, 12, 11, 11, 11]
         icon_colors = ["orange600", "blue600", "teal600", "purple600", "indigo600", "blueGrey600"]
-        
         for key, value in sorted(tree_dict.items()):
-            if key == "__files__":
-                continue
-            
+            if key == "__files__": continue
             files = value.get("__files__", [])
             sub_folders = {k: v for k, v in value.items() if k != "__files__"}
-            
             sub_controls = []
             new_path = os.path.join(current_path, key) if current_path else key
             
@@ -227,17 +289,11 @@ def main(page: ft.Page):
             for f in sorted(files):
                 doc_name = os.path.splitext(f)[0]
                 full_rel_path = os.path.join(new_path, f)
-                
-                # Thụt lề bậc thang cho file PDF
                 file_indent = (level + 1) * 10
-                
                 sub_controls.append(
                     ft.ListTile(
                         dense=True,
-                        leading=ft.Row([
-                            ft.Container(width=file_indent) if file_indent > 0 else ft.Container(width=0),
-                            ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="red500", size=15)
-                        ], spacing=2, tight=True),
+                        leading=ft.Row([ft.Container(width=file_indent) if file_indent > 0 else ft.Container(width=0), ft.Icon(ft.Icons.PICTURE_AS_PDF_ROUNDED, color="red500", size=15)], spacing=2, tight=True),
                         title=ft.Text(doc_name, color="#334155", size=11, weight=ft.FontWeight.W_500),
                         on_click=lambda e, path=full_rel_path, name=doc_name: load_document(name, path)
                     )
@@ -246,19 +302,13 @@ def main(page: ft.Page):
             current_size = font_sizes[min(level, len(font_sizes)-1)]
             current_color = icon_colors[min(level, len(icon_colors)-1)]
             folder_indent = level * 10
-            
             folder_icon = ft.Icons.DIRECTIONS_CAR_ROUNDED if level == 0 else (ft.Icons.FOLDER_ROUNDED if sub_folders else ft.Icons.FOLDER_OPEN_ROUNDED)
             
-            leading_control = ft.Row([
-                ft.Container(width=folder_indent) if folder_indent > 0 else ft.Container(width=0),
-                ft.Icon(folder_icon, color=current_color, size=16)
-            ], spacing=2, tight=True)
-
             controls.append(
                 ft.ExpansionTile(
                     dense=True,
                     title=ft.Text(key, weight=ft.FontWeight.BOLD if level < 2 else ft.FontWeight.W_500, size=current_size, color="#0F172A"),
-                    leading=leading_control,
+                    leading=ft.Row([ft.Container(width=folder_indent) if folder_indent > 0 else ft.Container(width=0), ft.Icon(folder_icon, color=current_color, size=16)], spacing=2, tight=True),
                     controls=sub_controls
                 )
             )
@@ -266,8 +316,7 @@ def main(page: ft.Page):
 
     file_tree = build_file_tree(assets_dir)
     menu_controls = create_menu_nodes(file_tree)
-    if not menu_controls:
-        menu_controls = [ft.Text("Đang chờ tạo thư mục xe trong assets...", color="grey", italic=True)]
+    if not menu_controls: menu_controls = [ft.Text("Đang chờ tạo thư mục xe trong assets...", color="grey", italic=True)]
 
     sidebar = ft.Container(
         width=330, bgcolor="#F8FAFC", padding=10,
@@ -289,8 +338,6 @@ def main(page: ft.Page):
     body_layout = ft.Row([sidebar, main_workspace], expand=True, spacing=0)
     main_layout = ft.Column([top_bar, body_layout], expand=True, spacing=0)
     page.add(ft.Stack(controls=[main_layout, chat_window, fab], expand=True))
-
-    add_message("AI", "Xin chào! Trợ lý AI đã sẵn sàng hỗ trợ bạn tra cứu mạch điện.")
 
 port = int(os.environ.get("PORT", 8080))
 ft.run(main, view=ft.AppView.WEB_BROWSER, host="0.0.0.0", port=port, assets_dir="assets")
