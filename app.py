@@ -20,7 +20,6 @@ if not os.path.exists(assets_dir):
 def decode_vin_api(vin):
     url = f"https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/{vin}?format=json"
     try:
-        # Bỏ qua xác thực SSL nghiêm ngặt trên máy chủ đám mây
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
@@ -196,7 +195,7 @@ def main(page: ft.Page):
         page.update()
 
     # ---------------------------------------------------
-    # DIALOG TRA CỨU SỐ KHUNG (VIN) VỚI NÚT BẤM SIÊU BỀN
+    # TỰ TẠO "CỬA SỔ NỔI" (MODAL) ĐỂ BẤT TỬ HÓA TÍNH NĂNG
     # ---------------------------------------------------
     vin_input = ft.TextField(
         label="Nhập số khung (VIN) - 17 ký tự", 
@@ -234,43 +233,50 @@ def main(page: ft.Page):
         page.update()
 
     def close_vin_dialog(e):
-        vin_dialog.open = False
+        vin_modal.visible = False
         page.update()
-
-    # Thay thế Elevated Button bằng Container tùy chỉnh
-    btn_decode = ft.Container(
-        content=ft.Row([
-            ft.Icon(ft.Icons.SEARCH, color="white", size=16),
-            ft.Text("Giải Mã VIN", color="white", weight=ft.FontWeight.BOLD)
-        ], alignment=ft.MainAxisAlignment.CENTER, tight=True),
-        bgcolor="blue700",
-        padding=10,
-        border_radius=5,
-        on_click=process_vin
-    )
-
-    btn_close = ft.Container(
-        content=ft.Text("Đóng", color="blue700", weight=ft.FontWeight.BOLD),
-        padding=10,
-        on_click=close_vin_dialog
-    )
-
-    vin_dialog = ft.AlertDialog(
-        title=ft.Row([ft.Icon(ft.Icons.DOCUMENT_SCANNER, color="orange600"), ft.Text("Tra Cứu Số Khung (VIN)")]),
-        content=ft.Column([vin_input, vin_loading, vin_result_text], tight=True, width=400),
-        actions=[btn_decode, btn_close],
-        actions_alignment=ft.MainAxisAlignment.END
-    )
 
     def open_vin_dialog(e):
         vin_input.value = ""
         vin_result_text.value = ""
         vin_loading.visible = False
-        page.dialog = vin_dialog
-        vin_dialog.open = True
+        vin_modal.visible = True
         page.update()
 
-    # THÊM NÚT SCAN VIN LÊN TOP BAR
+    btn_decode = ft.Container(
+        content=ft.Row([
+            ft.Icon(ft.Icons.SEARCH, color="white", size=16),
+            ft.Text("Giải Mã VIN", color="white", weight=ft.FontWeight.BOLD)
+        ], alignment=ft.MainAxisAlignment.CENTER, tight=True),
+        bgcolor="blue700", padding=10, border_radius=5, on_click=process_vin
+    )
+
+    btn_close = ft.Container(
+        content=ft.Text("Đóng", color="blueGrey400", weight=ft.FontWeight.BOLD),
+        padding=10, on_click=close_vin_dialog
+    )
+
+    # Đây là cửa sổ nổi đè lên toàn màn hình (an toàn tuyệt đối)
+    vin_modal = ft.Container(
+        visible=False,
+        left=0, right=0, top=0, bottom=0, # Phủ kín màn hình
+        bgcolor=ft.colors.with_opacity(0.6, "black"), # Làm mờ nền
+        alignment=ft.alignment.center,
+        content=ft.Container(
+            width=450, bgcolor="white", border_radius=10, padding=20,
+            shadow=ft.BoxShadow(spread_radius=1, blur_radius=15, color="black26"),
+            content=ft.Column([
+                ft.Row([ft.Icon(ft.Icons.DOCUMENT_SCANNER, color="orange600"), ft.Text("Tra Cứu Số Khung (VIN)", weight=ft.FontWeight.BOLD, size=18)]),
+                ft.Divider(color="grey300"),
+                vin_input,
+                vin_loading,
+                vin_result_text,
+                ft.Container(height=10),
+                ft.Row([btn_close, btn_decode], alignment=ft.MainAxisAlignment.END)
+            ], tight=True)
+        )
+    )
+
     top_bar = ft.Container(
         bgcolor="#0F172A", height=60, padding=15,
         content=ft.Row([
@@ -344,15 +350,4 @@ def main(page: ft.Page):
     main_workspace = ft.Container(
         expand=True, bgcolor="#E2E8F0", padding=20,
         content=ft.Column([
-            ft.Row([ft.Icon(ft.Icons.FOLDER_OPEN_ROUNDED, color="blueGrey700"), doc_title]),
-            ft.Divider(color="grey400"),
-            doc_display_area 
-        ])
-    )
-
-    body_layout = ft.Row([sidebar, main_workspace], expand=True, spacing=0)
-    main_layout = ft.Column([top_bar, body_layout], expand=True, spacing=0)
-    page.add(ft.Stack(controls=[main_layout, chat_window, fab], expand=True))
-
-port = int(os.environ.get("PORT", 8080))
-ft.run(main, view=ft.AppView.WEB_BROWSER, host="0.0.0.0", port=port, assets_dir="assets")
+            ft.Row([ft.Icon(ft.Icons.FOLDER_OPEN_ROUNDED, color="blueGrey700"), doc_title
