@@ -195,110 +195,65 @@ def main(page: ft.Page):
         page.update()
 
     # ---------------------------------------------------
-    # TỰ TẠO "CỬA SỔ NỔI" (MODAL) VỚI CĂN GIỮA NGUYÊN THỦY
+    # DIALOG TRA CỨU SỐ KHUNG (VIN)
     # ---------------------------------------------------
-    vin_input = ft.TextField(
-        label="Nhập số khung (VIN) - 17 ký tự", 
-        capitalization=ft.TextCapitalization.CHARACTERS,
-        prefix_icon=ft.Icons.DIRECTIONS_CAR,
-        border_radius=8
-    )
+    vin_input = ft.TextField(label="Nhập số khung (VIN) - 17 ký tự", capitalization=ft.TextCapitalization.CHARACTERS, prefix_icon=ft.Icons.DIRECTIONS_CAR, border_radius=8)
     vin_result_text = ft.Text("", size=14)
     vin_loading = ft.ProgressBar(visible=False)
 
     def process_vin(e):
         vin = vin_input.value.strip().upper()
         if len(vin) != 17:
-            vin_result_text.value = "❌ Số VIN phải có đúng 17 ký tự!"
-            vin_result_text.color = "red"
+            vin_result_text.value, vin_result_text.color = "❌ Số VIN phải có đúng 17 ký tự!", "red"
             page.update()
             return
         
-        vin_result_text.value = "Đang kết nối cơ sở dữ liệu quốc tế..."
-        vin_result_text.color = "blue"
-        vin_loading.visible = True
+        vin_result_text.value, vin_result_text.color, vin_loading.visible = "Đang kết nối cơ sở dữ liệu quốc tế...", "blue", True
         page.update()
 
         make, model, year, engine = decode_vin_api(vin)
         vin_loading.visible = False
         
         if make and make != "Không rõ":
-            vin_result_text.value = f"✅ KẾT QUẢ GIẢI MÃ:\n• Hãng xe: {make}\n• Dòng xe: {model}\n• Đời xe: {year}\n• Động cơ: {engine}\n\n👉 Vui lòng tìm theo Hãng {make} ở menu bên trái."
-            vin_result_text.color = "green700"
-            vin_result_text.weight = ft.FontWeight.BOLD
+            vin_result_text.value = f"✅ KẾT QUẢ GIẢI MÃ:\n• Hãng xe: {make}\n• Dòng xe: {model}\n• Đời xe: {year}\n• Động cơ: {engine}\n\n👉 Bạn có thể tìm theo hãng {make} ở menu."
+            vin_result_text.color, vin_result_text.weight = "green700", ft.FontWeight.BOLD
+            # Tự động điền hãng xe vào ô tìm kiếm
+            search_input.value = make
+            update_search(make)
         else:
-            vin_result_text.value = "❌ Không tìm thấy dữ liệu cho số khung này."
-            vin_result_text.color = "red"
-            vin_result_text.weight = ft.FontWeight.NORMAL
+            vin_result_text.value, vin_result_text.color, vin_result_text.weight = "❌ Không tìm thấy dữ liệu cho số khung này.", "red", ft.FontWeight.NORMAL
         page.update()
 
     def close_vin_dialog(e):
         vin_modal.visible = False
         page.update()
-
     def open_vin_dialog(e):
-        vin_input.value = ""
-        vin_result_text.value = ""
-        vin_loading.visible = False
-        vin_modal.visible = True
+        vin_input.value, vin_result_text.value, vin_loading.visible, vin_modal.visible = "", "", False, True
         page.update()
 
-    btn_decode = ft.Container(
-        content=ft.Row([
-            ft.Icon(ft.Icons.SEARCH, color="white", size=16),
-            ft.Text("Giải Mã VIN", color="white", weight=ft.FontWeight.BOLD)
-        ], alignment=ft.MainAxisAlignment.CENTER, tight=True),
-        bgcolor="blue700", padding=10, border_radius=5, on_click=process_vin
-    )
+    btn_decode = ft.Container(content=ft.Row([ft.Icon(ft.Icons.SEARCH, color="white", size=16), ft.Text("Giải Mã", color="white", weight=ft.FontWeight.BOLD)], alignment=ft.MainAxisAlignment.CENTER, tight=True), bgcolor="blue700", padding=10, border_radius=5, on_click=process_vin)
+    btn_close = ft.Container(content=ft.Text("Đóng", color="blueGrey400", weight=ft.FontWeight.BOLD), padding=10, on_click=close_vin_dialog)
 
-    btn_close = ft.Container(
-        content=ft.Text("Đóng", color="blueGrey400", weight=ft.FontWeight.BOLD),
-        padding=10, on_click=close_vin_dialog
-    )
-
-    # Đã thay thế alignment=ft.alignment.center bằng cấu trúc Row/Column căn giữa nguyên thủy nhất
     vin_modal = ft.Container(
-        visible=False,
-        left=0, right=0, top=0, bottom=0,
-        bgcolor="#99000000",
+        visible=False, left=0, right=0, top=0, bottom=0, bgcolor="#99000000",
         content=ft.Row(
             controls=[
                 ft.Container(
-                    width=450, bgcolor="white", border_radius=10, padding=20,
-                    shadow=ft.BoxShadow(spread_radius=1, blur_radius=15, color="black26"),
+                    width=450, bgcolor="white", border_radius=10, padding=20, shadow=ft.BoxShadow(spread_radius=1, blur_radius=15, color="black26"),
                     content=ft.Column([
                         ft.Row([ft.Icon(ft.Icons.DOCUMENT_SCANNER, color="orange600"), ft.Text("Tra Cứu Số Khung (VIN)", weight=ft.FontWeight.BOLD, size=18)]),
-                        ft.Divider(color="grey300"),
-                        vin_input,
-                        vin_loading,
-                        vin_result_text,
-                        ft.Container(height=10),
+                        ft.Divider(color="grey300"), vin_input, vin_loading, vin_result_text, ft.Container(height=10),
                         ft.Row([btn_close, btn_decode], alignment=ft.MainAxisAlignment.END)
                     ], tight=True)
                 )
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            vertical_alignment=ft.CrossAxisAlignment.CENTER
+            ], alignment=ft.MainAxisAlignment.CENTER, vertical_alignment=ft.CrossAxisAlignment.CENTER
         )
     )
 
-    top_bar = ft.Container(
-        bgcolor="#0F172A", height=60, padding=15,
-        content=ft.Row([
-            ft.Row([ft.Icon(ft.Icons.DIRECTIONS_CAR, color="orange500", size=30), ft.Text("GDS AUTO EDU", color="white", weight=ft.FontWeight.BOLD, size=20)]),
-            ft.Container(content=ft.TextField(hint_text="Tìm kiếm linh kiện...", bgcolor="#1E293B", border_color="transparent", color="white", border_radius=5, content_padding=10, prefix_icon=ft.Icons.SEARCH), width=400),
-            ft.Row([
-                ft.IconButton(icon=ft.Icons.DOCUMENT_SCANNER_ROUNDED, icon_color="orange500", tooltip="Tra cứu VIN", on_click=open_vin_dialog),
-                ft.Container(width=5),
-                ft.CircleAvatar(content=ft.Icon(ft.Icons.PERSON, color="white"), bgcolor="grey700")
-            ])
-        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
-    )
-
     # ---------------------------------------------------
-    # TẠO MENU BÊN TRÁI
+    # TÍNH NĂNG TÌM KIẾM THỜI GIAN THỰC (REAL-TIME SEARCH)
     # ---------------------------------------------------
-    def create_menu_nodes(tree_dict, current_path="", level=0):
+    def create_menu_nodes(tree_dict, current_path="", level=0, search_term=""):
         controls = []
         font_sizes = [13, 12, 12, 11, 11, 11]
         icon_colors = ["orange600", "blue600", "teal600", "purple600", "indigo600", "blueGrey600"]
@@ -309,11 +264,19 @@ def main(page: ft.Page):
             sub_controls = []
             new_path = os.path.join(current_path, key) if current_path else key
             
+            # Kiểm tra xem từ khóa có nằm trong tên thư mục này không
+            folder_matches = (search_term in key.lower()) if search_term else False
+            
             if sub_folders:
-                sub_controls.extend(create_menu_nodes(sub_folders, new_path, level + 1))
+                # Chuyển từ khóa tìm kiếm xuống các thư mục con
+                sub_controls.extend(create_menu_nodes(sub_folders, new_path, level + 1, search_term))
             
             for f in sorted(files):
                 doc_name = os.path.splitext(f)[0]
+                # Lọc file: Giữ lại nếu tên file khớp, hoặc thư mục cha đã khớp
+                if search_term and (search_term not in doc_name.lower()) and not folder_matches:
+                    continue
+                    
                 full_rel_path = os.path.join(new_path, f)
                 file_indent = (level + 1) * 10
                 sub_controls.append(
@@ -325,6 +288,10 @@ def main(page: ft.Page):
                     )
                 )
             
+            # Ẩn thư mục nếu đang tìm kiếm mà thư mục này (và các con của nó) không khớp
+            if search_term and not folder_matches and not sub_controls:
+                continue
+                
             current_size = font_sizes[min(level, len(font_sizes)-1)]
             current_color = icon_colors[min(level, len(icon_colors)-1)]
             folder_indent = level * 10
@@ -335,20 +302,58 @@ def main(page: ft.Page):
                     dense=True,
                     title=ft.Text(key, weight=ft.FontWeight.BOLD if level < 2 else ft.FontWeight.W_500, size=current_size, color="#0F172A"),
                     leading=ft.Row([ft.Container(width=folder_indent) if folder_indent > 0 else ft.Container(width=0), ft.Icon(folder_icon, color=current_color, size=16)], spacing=2, tight=True),
-                    controls=sub_controls
+                    controls=sub_controls,
+                    # Tự động bung mở thư mục nếu đang ở chế độ tìm kiếm
+                    initially_expanded=True if search_term else False 
                 )
             )
         return controls
 
     file_tree = build_file_tree(assets_dir)
-    menu_controls = create_menu_nodes(file_tree)
-    if not menu_controls: menu_controls = [ft.Text("Đang chờ tạo thư mục xe trong assets...", color="grey", italic=True)]
+    sidebar_column = ft.Column(scroll=ft.ScrollMode.AUTO, expand=True)
+
+    def update_search(e_or_value):
+        # Lấy giá trị từ sự kiện gõ phím hoặc chuỗi trực tiếp
+        query = e_or_value.control.value.lower().strip() if hasattr(e_or_value, 'control') else e_or_value.lower().strip()
+        filtered_controls = create_menu_nodes(file_tree, search_term=query)
+        
+        if not filtered_controls:
+            filtered_controls = [ft.Text("Không tìm thấy dữ liệu...", color="red400", italic=True)]
+        
+        sidebar_column.controls = filtered_controls
+        sidebar_column.update()
+
+    # Load menu lần đầu tiên
+    sidebar_column.controls = create_menu_nodes(file_tree)
+    if not sidebar_column.controls:
+        sidebar_column.controls = [ft.Text("Đang chờ tạo thư mục xe trong assets...", color="grey", italic=True)]
+
+    # Gắn sự kiện on_change vào ô tìm kiếm
+    search_input = ft.TextField(
+        hint_text="Tìm kiếm hệ thống, xe...", 
+        bgcolor="#1E293B", border_color="transparent", color="white", 
+        border_radius=5, content_padding=10, prefix_icon=ft.Icons.SEARCH,
+        on_change=update_search
+    )
+
+    top_bar = ft.Container(
+        bgcolor="#0F172A", height=60, padding=15,
+        content=ft.Row([
+            ft.Row([ft.Icon(ft.Icons.DIRECTIONS_CAR, color="orange500", size=30), ft.Text("GDS AUTO EDU", color="white", weight=ft.FontWeight.BOLD, size=20)]),
+            ft.Container(content=search_input, width=400),
+            ft.Row([
+                ft.IconButton(icon=ft.Icons.DOCUMENT_SCANNER_ROUNDED, icon_color="orange500", tooltip="Tra cứu VIN", on_click=open_vin_dialog),
+                ft.Container(width=5),
+                ft.CircleAvatar(content=ft.Icon(ft.Icons.PERSON, color="white"), bgcolor="grey700")
+            ])
+        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+    )
 
     sidebar = ft.Container(
         width=330, bgcolor="#F8FAFC", padding=10,
         content=ft.Column([
             ft.Text("DANH MỤC HÃNG XE & HỆ THỐNG", weight=ft.FontWeight.BOLD, color="grey700", size=12),
-            ft.Column(controls=menu_controls, scroll=ft.ScrollMode.AUTO, expand=True)
+            sidebar_column
         ])
     )
 
