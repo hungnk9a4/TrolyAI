@@ -195,7 +195,7 @@ def main(page: ft.Page):
         page.update()
 
     # ---------------------------------------------------
-    # TỰ TẠO "CỬA SỔ NỔI" (MODAL) ĐỂ BẤT TỬ HÓA TÍNH NĂNG
+    # TỰ TẠO "CỬA SỔ NỔI" (MODAL) VỚI CĂN GIỮA NGUYÊN THỦY
     # ---------------------------------------------------
     vin_input = ft.TextField(
         label="Nhập số khung (VIN) - 17 ký tự", 
@@ -256,24 +256,29 @@ def main(page: ft.Page):
         padding=10, on_click=close_vin_dialog
     )
 
-    # Đã thay thế hàm gọi màu lỗi bằng Mã màu Hex trực tiếp (#99000000)
+    # Đã thay thế alignment=ft.alignment.center bằng cấu trúc Row/Column căn giữa nguyên thủy nhất
     vin_modal = ft.Container(
         visible=False,
         left=0, right=0, top=0, bottom=0,
         bgcolor="#99000000",
-        alignment=ft.alignment.center,
-        content=ft.Container(
-            width=450, bgcolor="white", border_radius=10, padding=20,
-            shadow=ft.BoxShadow(spread_radius=1, blur_radius=15, color="black26"),
-            content=ft.Column([
-                ft.Row([ft.Icon(ft.Icons.DOCUMENT_SCANNER, color="orange600"), ft.Text("Tra Cứu Số Khung (VIN)", weight=ft.FontWeight.BOLD, size=18)]),
-                ft.Divider(color="grey300"),
-                vin_input,
-                vin_loading,
-                vin_result_text,
-                ft.Container(height=10),
-                ft.Row([btn_close, btn_decode], alignment=ft.MainAxisAlignment.END)
-            ], tight=True)
+        content=ft.Row(
+            controls=[
+                ft.Container(
+                    width=450, bgcolor="white", border_radius=10, padding=20,
+                    shadow=ft.BoxShadow(spread_radius=1, blur_radius=15, color="black26"),
+                    content=ft.Column([
+                        ft.Row([ft.Icon(ft.Icons.DOCUMENT_SCANNER, color="orange600"), ft.Text("Tra Cứu Số Khung (VIN)", weight=ft.FontWeight.BOLD, size=18)]),
+                        ft.Divider(color="grey300"),
+                        vin_input,
+                        vin_loading,
+                        vin_result_text,
+                        ft.Container(height=10),
+                        ft.Row([btn_close, btn_decode], alignment=ft.MainAxisAlignment.END)
+                    ], tight=True)
+                )
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER
         )
     )
 
